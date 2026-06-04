@@ -13,6 +13,8 @@ Do not hide failures during tests.
 - Manual hosting is allowed, but label it as manual hosting, not script-backed adjudication.
 - For helper-script tests, prefer `simulate_life.py turn --intent <intent.json> --strict` so missing event support is reported instead of replaced by generated events.
 - In strict script tests, treat `weak_intent_match` like a real failure: the pack had age-valid material, but not material that matched the user's intent.
+- Treat `unsupported_world` as an even earlier failure: the content pack does not support the state's realm or requested world shape.
+- Use `content_pack_diagnostic.unsupported_intent_tags` to name what the pack does not cover.
 - If strict mode returns `probe_state`, treat it as diagnostic only; keep `state` as the canonical ledger.
 
 The purpose of playtesting is to expose missing capabilities, not to produce the smoothest possible demo.

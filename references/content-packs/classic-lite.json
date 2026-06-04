@@ -3,6 +3,8 @@
   "id": "classic-lite",
   "title": "Classic Lite Life Restart World",
   "license": "Original seed content for this skill. Inspired by life-restart mechanics; not copied from upstream event prose.",
+  "compatible_realms": ["human_world", "higher_realm"],
+  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "cultivation"],
   "attributes": {
     "CHR": "presence, charm, appearance",
     "INT": "learning and reasoning",
@@ -88,8 +90,26 @@
       "tags": ["health", "family"],
       "effects": {"STR": -1, "SPR": -1, "WIL": 1},
       "set_flags": ["childhood_illness"],
+      "relationships": {
+        "family": {"delta": 1, "note": "worry and care become part of childhood memory"}
+      },
       "narrative_seed": "A childhood illness makes the household rearrange itself around fever, medicine, and worry.",
       "choices": ["Rest and recover slowly", "Become quieter and more observant", "Push yourself too early"]
+    },
+    {
+      "id": "childhood_spirit_sign",
+      "title": "童年异兆",
+      "age_range": [1, 12],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "TLT?[root_of_cultivation,old_coin]|LUK>=8",
+      "tags": ["cultivation", "mystery", "luck"],
+      "effects": {"LUK": 1, "SPR": -1},
+      "set_flags": ["latent_cultivation"],
+      "open_threads": ["latent_cultivation"],
+      "narrative_seed": "A small impossible sign appears in childhood, too strange to explain and too quiet to prove.",
+      "choices": ["Keep the sign secret", "Ask an elder about old stories", "Treat it as a childish illusion"]
     },
     {
       "id": "teacher_notice",
@@ -103,8 +123,36 @@
       "effects": {"INT": 1, "SPR": 1},
       "set_flags": ["teacher_noticed"],
       "open_threads": ["exam_path"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "recognizes unusual effort and expects discipline"}
+      },
+      "pressure_clocks": {
+        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
+      },
       "narrative_seed": "A teacher notices unusual effort and quietly opens a door.",
       "choices": ["Lean into study", "Hide the attention from family pressure", "Ask the teacher for a harder path"]
+    },
+    {
+      "id": "school_computer_room_access",
+      "title": "机房边角时间",
+      "age_range": [13, 18],
+      "realm": "human_world",
+      "weight": 7,
+      "repeatable": false,
+      "include": "flags?[teacher_noticed]&INT>=7",
+      "tags": ["education", "technology", "mentor"],
+      "effects": {"INT": 1, "SPR": 1},
+      "set_flags": ["authorized_lab_time"],
+      "open_threads": ["computer_access"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "offers supervised access in exchange for discipline"}
+      },
+      "pressure_clocks": {
+        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"},
+        "secrecy_risk": {"delta": -1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+      },
+      "narrative_seed": "A teacher turns curiosity into a narrow but legitimate opening toward computers.",
+      "choices": ["Use the lab time carefully", "Ask for harder computer books", "Trade chores for more access"]
     },
     {
       "id": "secret_part_time",
@@ -117,8 +165,46 @@
       "effects": {"MNY": 1, "SPR": -1, "WIL": 1},
       "set_flags": ["secret_part_time_job"],
       "open_threads": ["money_vs_study"],
+      "pressure_clocks": {
+        "secrecy_risk": {"delta": 1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+      },
       "narrative_seed": "The character trades rest for money and learns the price of secrecy.",
       "choices": ["Keep earning quietly", "Tell family the truth", "Use the money for a tool or opportunity"]
+    },
+    {
+      "id": "parent_discovers_secret_job",
+      "title": "秘密差点穿帮",
+      "age_range": [14, 18],
+      "realm": "human_world",
+      "weight": 6,
+      "repeatable": false,
+      "include": "flags?[secret_part_time_job]",
+      "tags": ["family", "secret", "money"],
+      "effects": {"SPR": -1, "WIL": 1},
+      "set_flags": ["family_suspects_secret_work"],
+      "relationships": {
+        "family": {"delta": -1, "note": "notices fatigue and suspects hidden pressure"}
+      },
+      "pressure_clocks": {
+        "secrecy_risk": {"delta": 1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+      },
+      "narrative_seed": "The family notices the cost before they understand the reason.",
+      "choices": ["Tell a partial truth", "Double down on secrecy", "Ask a teacher to mediate"]
+    },
+    {
+      "id": "used_computer_opportunity",
+      "title": "二手电脑机会",
+      "age_range": [14, 22],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[secret_part_time_job]|flags?[authorized_lab_time]|MNY>=4",
+      "tags": ["technology", "money", "choice"],
+      "effects": {"MNY": -1, "INT": 1, "SPR": 1},
+      "set_flags": ["used_computer_opportunity"],
+      "open_threads": ["computer_path"],
+      "narrative_seed": "A used machine or shared computer becomes possible, but the price is not only money.",
+      "choices": ["Spend the saved money", "Ask for help openly", "Wait and keep practicing elsewhere"]
     },
     {
       "id": "exam_crossroads",
@@ -132,6 +218,9 @@
       "effects": {"INT": 1, "SPR": -1},
       "set_flags": ["exam_pressure"],
       "open_threads": ["leave_or_stay"],
+      "pressure_clocks": {
+        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
+      },
       "narrative_seed": "Exams turn private talent into public pressure.",
       "choices": ["Bet everything on school", "Balance study and earning money", "Choose a practical trade"]
     },
@@ -175,8 +264,26 @@
       "tags": ["relationship", "family", "regret"],
       "effects": {"SPR": -1, "WIL": 1},
       "set_flags": ["relationship_reckoning"],
+      "relationships": {
+        "family": {"delta": -1, "note": "an old emotional debt becomes harder to ignore"}
+      },
       "narrative_seed": "A relationship asks for payment on an old emotional debt.",
       "choices": ["Apologize honestly", "Keep distance", "Choose ambition over repair"]
+    },
+    {
+      "id": "wandering_adept_rumor",
+      "title": "游方传闻",
+      "age_range": [13, 29],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "flags?[latent_cultivation]|TLT?[root_of_cultivation]",
+      "tags": ["cultivation", "mystery", "choice"],
+      "effects": {"LUK": 1, "WIL": 1, "SPR": -1},
+      "set_flags": ["heard_adept_rumor"],
+      "open_threads": ["search_for_manual"],
+      "narrative_seed": "A rumor suggests the childhood sign may belong to a wider, stranger order of the world.",
+      "choices": ["Follow the rumor quietly", "Dismiss it and return to ordinary life", "Ask someone older what they know"]
     },
     {
       "id": "hidden_manual",
@@ -185,14 +292,33 @@
       "realm": "human_world",
       "weight": 3,
       "repeatable": false,
-      "include": "TLT?[root_of_cultivation]|LUK>=8",
+      "include": "TLT?[root_of_cultivation]|LUK>=8|flags?[heard_adept_rumor]",
       "tags": ["cultivation", "mystery", "longevity"],
       "effects": {"INT": 2, "STR": 1, "SPR": 1},
       "set_flags": ["found_hidden_manual"],
+      "close_threads": ["search_for_manual"],
+      "open_threads": ["ascension_threshold"],
       "life_cap": 500,
       "existence_state": "cultivator",
       "narrative_seed": "An impossible text appears at the edge of ordinary life and changes the scale of time.",
       "choices": ["Practice in secret", "Treat it as a hallucination", "Search for others who know"]
+    },
+    {
+      "id": "cultivation_bottleneck",
+      "title": "百岁瓶颈",
+      "age_range": [90, 300],
+      "realm": "human_world",
+      "weight": 6,
+      "repeatable": true,
+      "include": "existence_state=cultivator&flags?[found_hidden_manual]",
+      "tags": ["cultivation", "longevity", "risk"],
+      "effects": {"WIL": 1, "SPR": -1},
+      "open_threads": ["ascension_threshold"],
+      "pressure_clocks": {
+        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      },
+      "narrative_seed": "Long life stops feeling like escape and starts feeling like a test of direction.",
+      "choices": ["Endure the bottleneck", "Seek a dangerous breakthrough", "Return to old human ties"]
     },
     {
       "id": "ascension_gate",
@@ -205,12 +331,34 @@
       "tags": ["cultivation", "ascension", "ending"],
       "effects": {"SPR": 3},
       "set_flags": ["ascended_from_human_world"],
+      "close_threads": ["family_origin", "latent_cultivation", "ascension_threshold", "cultivation_bottleneck"],
+      "open_threads": ["higher_realm_invitation"],
+      "pressure_clocks": {
+        "cultivation_bottleneck": {"close": true}
+      },
       "existence_state": "ascended",
       "realm_transition": "higher_realm",
       "terminal": true,
       "terminal_reason": "The human-life arc ends in ascension.",
       "narrative_seed": "The character steps beyond the human world; the life can end here or continue in a higher realm.",
       "choices": ["Summarize the human life", "Continue into the higher realm", "Choose one talent to inherit"]
+    },
+    {
+      "id": "higher_realm_start",
+      "title": "上界初临",
+      "age_range": [80, 10000],
+      "realm": "higher_realm",
+      "weight": 10,
+      "repeatable": false,
+      "include": "existence_state=ascended&flags?[ascended_from_human_world]",
+      "tags": ["cultivation", "ascension", "higher_realm"],
+      "effects": {"WIL": 1, "SPR": 1},
+      "set_flags": ["higher_realm_arrival"],
+      "close_threads": ["higher_realm_invitation"],
+      "open_threads": ["higher_realm_identity"],
+      "clear_terminal": true,
+      "narrative_seed": "The old human arc is closed, but consciousness steadies into a new realm with unfamiliar laws.",
+      "choices": ["Learn the higher realm's rules", "Look back at the human inheritance", "Test the new body's limits"]
     },
     {
       "id": "ordinary_old_age",
@@ -230,14 +378,17 @@
   ],
   "age_pools": {
     "0": [{"event_id": "birth_county", "weight": 20}],
-    "1-6": [{"event_id": "early_sickness", "weight": 6}],
-    "7-13": [{"event_id": "teacher_notice", "weight": 12}],
-    "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "exam_crossroads", "weight": 14}],
+    "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_spirit_sign", "weight": 5}],
+    "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "childhood_spirit_sign", "weight": 5}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}],
+    "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],
     "24-40": [{"event_id": "small_success", "weight": 9}],
     "28-55": [{"event_id": "relationship_reckoning", "weight": 8}],
+    "13-29": [{"event_id": "wandering_adept_rumor", "weight": 4}],
     "30-80": [{"event_id": "hidden_manual", "weight": 3}],
-    "80-500": [{"event_id": "ascension_gate", "weight": 4}],
+    "90-300": [{"event_id": "cultivation_bottleneck", "weight": 6}],
+    "80-500": [{"event_id": "ascension_gate", "weight": 4}, {"event_id": "higher_realm_start", "weight": 10}],
     "70-105": [{"event_id": "ordinary_old_age", "weight": 12}]
   }
 }

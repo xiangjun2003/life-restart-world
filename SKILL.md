@@ -79,6 +79,8 @@ Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<loc
 
 When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.
 
+Strict script failures can include `unsupported_world`, `no_matching_event`, or `weak_intent_match`. Treat all of them as useful diagnostics, not as narrative failures to smooth over.
+
 ## Output Shape For Play
 
 For each playable turn, respond in this order:

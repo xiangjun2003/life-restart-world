@@ -41,7 +41,7 @@ ACTION_TAGS = {
 TAG_GROUPS = {
     "study": {"study", "education", "exam", "school", "mentor"},
     "work": {"work", "job", "business", "career", "achievement", "city"},
-    "money": {"money", "resources", "poverty", "technology"},
+    "money": {"money", "resources", "poverty"},
     "technology": {"technology", "computer", "code", "internet"},
     "family": {"family", "parent", "origin"},
     "secret": {"secret", "hide", "mystery"},
@@ -295,8 +295,79 @@ def apply_effects(state: dict[str, Any], effects: dict[str, Any] | None) -> None
             state["terminal_reason"] = state.get("terminal_reason") or "Life force fell below survival."
 
 
+def clamp_relationship(value: int) -> int:
+    return max(-5, min(5, value))
+
+
+def relationship_score(entry: Any) -> int:
+    if isinstance(entry, dict):
+        try:
+            return int(entry.get("score", 0))
+        except (TypeError, ValueError):
+            return 0
+    try:
+        return int(entry)
+    except (TypeError, ValueError):
+        return 0
+
+
+def apply_relationships(state: dict[str, Any], updates: dict[str, Any] | None) -> None:
+    if not isinstance(updates, dict):
+        return
+    relationships = state.setdefault("relationships", {})
+    for name, update in updates.items():
+        current = relationships.get(name, {})
+        entry = dict(current) if isinstance(current, dict) else {"score": relationship_score(current)}
+        if isinstance(update, dict):
+            if "score" in update:
+                entry["score"] = clamp_relationship(relationship_score(update.get("score")))
+            else:
+                delta = update.get("delta", update.get("score_delta", 0))
+                entry["score"] = clamp_relationship(relationship_score(entry) + int(delta or 0))
+            if update.get("note"):
+                entry["note"] = str(update["note"])
+        else:
+            entry["score"] = clamp_relationship(relationship_score(entry) + int(update or 0))
+        relationships[str(name)] = entry
+
+
+def apply_pressure_clocks(state: dict[str, Any], updates: dict[str, Any] | None) -> None:
+    if not isinstance(updates, dict):
+        return
+    clocks = state.setdefault("pressure_clocks", {})
+    for clock_id, update in updates.items():
+        if update is None:
+            clocks.pop(clock_id, None)
+            continue
+        if not isinstance(update, dict):
+            update = {"delta": update}
+        if update.get("close"):
+            clocks.pop(clock_id, None)
+            continue
+        current = clocks.get(clock_id, {})
+        clock = dict(current) if isinstance(current, dict) else {"stage": int(current or 0)}
+        if "set_stage" in update:
+            stage = int(update.get("set_stage") or 0)
+        else:
+            stage = int(clock.get("stage", 0)) + int(update.get("delta", 0) or 0)
+        limit = update.get("limit", clock.get("limit"))
+        if limit is not None:
+            limit = int(limit)
+            stage = max(0, min(limit, stage))
+            clock["limit"] = limit
+        else:
+            stage = max(0, stage)
+        clock["stage"] = stage
+        for key in ["meaning", "on_fill"]:
+            if update.get(key):
+                clock[key] = str(update[key])
+        clocks[str(clock_id)] = clock
+
+
 def apply_event(state: dict[str, Any], event: dict[str, Any], intent: dict[str, Any]) -> dict[str, Any]:
     apply_effects(state, event.get("effects"))
+    apply_relationships(state, event.get("relationships"))
+    apply_pressure_clocks(state, event.get("pressure_clocks"))
     flags = set(state.get("flags", []))
     flags.update(event.get("set_flags", []))
     flags.difference_update(event.get("clear_flags", []))
@@ -315,6 +386,9 @@ def apply_event(state: dict[str, Any], event: dict[str, Any], intent: dict[str, 
         state["existence_state"] = event["existence_state"]
     if event.get("realm_transition"):
         state["realm"] = event["realm_transition"]
+    if event.get("clear_terminal"):
+        state["terminal"] = False
+        state["terminal_reason"] = None
     if event.get("terminal"):
         state["terminal"] = True
         state["terminal_reason"] = event.get("terminal_reason") or event.get("title")
@@ -406,6 +480,34 @@ def summarize_candidates(candidates: list[tuple[dict[str, Any], float]]) -> list
             }
         )
     return summary
+
+
+def pack_tag_catalog(pack: dict[str, Any]) -> set[str]:
+    tags = semantic_tags(pack.get("compatible_world_tags", []))
+    for event in pack.get("events", []):
+        tags.update(semantic_tags(event.get("tags", [])))
+    for talent in pack.get("talents", []):
+        tags.update(semantic_tags(talent.get("tags", [])))
+    return tags
+
+
+def content_pack_diagnostic(pack: dict[str, Any], state: dict[str, Any], intent: dict[str, Any]) -> dict[str, Any]:
+    compatible_realms = set(str(item) for item in pack.get("compatible_realms", []))
+    realm = str(state.get("realm", "human_world"))
+    intent_tags = [str(tag) for tag in intent.get("tags", [])]
+    tag_catalog = pack_tag_catalog(pack)
+    unsupported_tags = []
+    for tag in intent_tags:
+        expanded = semantic_tags([tag])
+        if not (expanded & tag_catalog):
+            unsupported_tags.append(tag)
+    return {
+        "pack_id": pack.get("id"),
+        "realm": realm,
+        "realm_supported": not compatible_realms or realm in compatible_realms or "any" in compatible_realms,
+        "compatible_realms": sorted(compatible_realms),
+        "unsupported_intent_tags": unsupported_tags,
+    }
 
 
 def collect_candidates(pack: dict[str, Any], state: dict[str, Any], intent: dict[str, Any]) -> list[tuple[dict[str, Any], float]]:
@@ -529,11 +631,31 @@ def state_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     if old_threads != new_threads:
         diff["threads_added"] = sorted(new_threads - old_threads)
         diff["threads_closed"] = sorted(old_threads - new_threads)
+    if before.get("relationships", {}) != after.get("relationships", {}):
+        changed = {}
+        before_relationships = before.get("relationships", {})
+        after_relationships = after.get("relationships", {})
+        for key in sorted(set(before_relationships) | set(after_relationships)):
+            if before_relationships.get(key) != after_relationships.get(key):
+                changed[key] = [before_relationships.get(key), after_relationships.get(key)]
+        diff["relationships"] = changed
+    if before.get("pressure_clocks", {}) != after.get("pressure_clocks", {}):
+        changed = {}
+        before_clocks = before.get("pressure_clocks", {})
+        after_clocks = after.get("pressure_clocks", {})
+        for key in sorted(set(before_clocks) | set(after_clocks)):
+            if before_clocks.get(key) != after_clocks.get(key):
+                changed[key] = [before_clocks.get(key), after_clocks.get(key)]
+        diff["pressure_clocks"] = changed
     return diff
 
 
 def default_choices(event: dict[str, Any], state: dict[str, Any]) -> list[str]:
     choices = list(event.get("choices", []))
+    if event.get("terminal") or state.get("terminal"):
+        return choices[:4] if choices else ["Review this life", "Choose an inheritance", "Close the arc"]
+    if len(choices) >= 3:
+        return choices[:4]
     fallback = [
         "Take the stable path and reduce risk",
         "Push harder toward the current goal",
@@ -642,6 +764,18 @@ def command_turn(args: argparse.Namespace) -> None:
     intent = load_intent_arg(args.intent, args.action) or infer_action(args.action)
     rng = random.Random(f"{seed}:{state.get('turn', 0)}:{intent.get('summary')}")
     before = copy.deepcopy(state)
+    diagnostic = content_pack_diagnostic(pack, state, intent)
+    if args.strict and not diagnostic["realm_supported"]:
+        result = {
+            "error": "unsupported_world",
+            "intent": intent,
+            "content_pack_diagnostic": diagnostic,
+            "state_delta": {},
+            "state": before,
+            "gm_instruction": "Strict mode found that this content pack does not support the state's realm. Report the content-pack mismatch and host manually only if the playtest is evaluating Game Master behavior.",
+        }
+        print(dump(result))
+        raise SystemExit(4)
     age_step = advance_age(state, rng)
     state["turn"] = int(state.get("turn", 0)) + 1
     candidates = collect_candidates(pack, state, intent)
@@ -653,6 +787,7 @@ def command_turn(args: argparse.Namespace) -> None:
                 "intent": intent,
                 "age_step": age_step,
                 "candidate_summaries": summarize_candidates(candidates),
+                "content_pack_diagnostic": diagnostic,
                 "state_delta": {},
                 "state": before,
                 "probe_state": state,
@@ -666,6 +801,7 @@ def command_turn(args: argparse.Namespace) -> None:
             "error": "no_matching_event",
             "intent": intent,
             "age_step": age_step,
+            "content_pack_diagnostic": diagnostic,
             "state_delta": {},
             "state": before,
             "probe_state": state,
@@ -684,6 +820,7 @@ def command_turn(args: argparse.Namespace) -> None:
         "intent": intent,
         "age_step": age_step,
         "selected_event": selected,
+        "content_pack_diagnostic": diagnostic,
         "state_delta": state_diff(before, state),
         "state": state,
         "action_entries": default_choices(selected, state),

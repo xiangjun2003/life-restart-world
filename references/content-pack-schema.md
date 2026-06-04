@@ -2,6 +2,8 @@
 
 Content packs are JSON files. They are data, not prompts. The Game Master uses them to ground events and state changes.
 
+Top-level compatibility fields help tests expose mismatches. They do not force a custom world to use the pack.
+
 ## Top-Level Shape
 
 ```json
@@ -10,6 +12,8 @@ Content packs are JSON files. They are data, not prompts. The Game Master uses t
   "id": "classic-lite",
   "title": "Classic Lite",
   "license": "Original content unless source is specified.",
+  "compatible_realms": ["human_world"],
+  "compatible_world_tags": ["classic", "realistic", "school", "cultivation"],
   "attributes": {},
   "talents": [],
   "events": [],
@@ -45,6 +49,12 @@ Content packs are JSON files. They are data, not prompts. The Game Master uses t
   "exclude": "flags?[dropped_out]",
   "tags": ["education", "mentor"],
   "effects": {"INT": 1, "SPR": 1},
+  "relationships": {
+    "mentor_teacher": {"delta": 1, "note": "quietly opens a harder path"}
+  },
+  "pressure_clocks": {
+    "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
+  },
   "set_flags": ["teacher_noticed"],
   "open_threads": ["exam_path"],
   "narrative_seed": "A teacher notices the child making unusual effort with limited resources.",
@@ -56,6 +66,11 @@ Content packs are JSON files. They are data, not prompts. The Game Master uses t
 }
 ```
 
+## Top-Level Compatibility
+
+- `compatible_realms`: realms this pack can reasonably support, such as `human_world` or `higher_realm`.
+- `compatible_world_tags`: broad world tags this pack is meant to cover. Use these for diagnostics, not for hard narrative control.
+
 ## Event Fields
 
 - `age` or `age_range`: match by current age. Use `null` for timeless events.
@@ -66,11 +81,14 @@ Content packs are JSON files. They are data, not prompts. The Game Master uses t
 - `exclude`: condition that blocks the event when true.
 - `tags`: used for action relevance and thematic continuity.
 - `effects`: numeric attribute deltas. `LIF <= -1` can end a mortal life.
+- `relationships`: relationship score updates keyed by person or faction. Use `{"delta": 1, "note": "..."}` for relative changes or `{"score": 2}` for absolute assignment.
+- `pressure_clocks`: slow-tension updates keyed by clock ID. Use `{"delta": 1, "limit": 4, "meaning": "..."}`, `{"set_stage": 2}`, or `{"close": true}`.
 - `set_flags`, `clear_flags`, `open_threads`, `close_threads`: durable state changes.
 - `life_cap`: set or raise current life cap.
 - `existence_state`: set a new existence state.
 - `realm_transition`: move to a new realm.
 - `terminal`: end the current arc.
+- `clear_terminal`: reopen play after a terminal transition when starting a new arc, such as continuing after ascension.
 - `terminal_reason`: summary for endings.
 - `narrative_seed`: factual seed for story rendering.
 - `choices`: next action entries.
