@@ -39,8 +39,11 @@ REQUIRED_KEYS = [
 ]
 
 ATTRIBUTES = ["CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL"]
-LIST_KEYS = ["talents", "flags", "open_threads", "phase_summaries", "recent_timeline", "next_affordances"]
+LIST_KEYS = ["talents", "flags", "open_threads", "phase_summaries", "recent_timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
+AFFORDANCE_RISKS = {"low", "medium", "high", "critical"}
+NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
+INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
 
 
 def load_checkpoint(value: str) -> dict[str, Any]:
@@ -102,18 +105,28 @@ def check_attributes(value: Any, errors: list[str], warnings: list[str]) -> None
             warnings.append(f"attributes.{attr} is not a standard attribute")
 
 
-def check_world(value: Any, active_clock_ids: set[str], errors: list[str], warnings: list[str]) -> None:
+def has_real_content_pack(value: dict[str, Any]) -> bool:
+    content_pack = value.get("content_pack")
+    if not isinstance(content_pack, str):
+        return False
+    return content_pack.strip().lower() not in NO_PACK_PLACEHOLDERS
+
+
+def check_world(value: Any, active_clocks: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, dict):
         errors.append("world must be an object")
         return
     for key in ["style", "premise", "content_pack"]:
         if key in value and not isinstance(value[key], str):
             errors.append(f"world.{key} must be a string when present")
+    if isinstance(value.get("content_pack"), str) and not has_real_content_pack(value):
+        warnings.append("world.content_pack looks like a no-pack placeholder; omit content_pack for custom/no-pack worlds")
+    content_pack_present = has_real_content_pack(value)
     if not value.get("premise"):
         warnings.append("world.premise is empty")
     session_note = value.get("session_note")
     if session_note is None:
-        if not value.get("content_pack"):
+        if not content_pack_present:
             warnings.append("custom or no-pack checkpoint should include world.session_note")
         return
     if not isinstance(session_note, dict):
@@ -121,11 +134,11 @@ def check_world(value: Any, active_clock_ids: set[str], errors: list[str], warni
         return
     if "state_axes" in session_note:
         check_string_list(session_note["state_axes"], "world.session_note.state_axes", errors, warnings)
-    elif not value.get("content_pack"):
+    elif not content_pack_present:
         warnings.append("custom or no-pack world.session_note.state_axes is missing")
     factions = session_note.get("factions")
     if factions is None:
-        if not value.get("content_pack"):
+        if not content_pack_present:
             warnings.append("custom or no-pack world.session_note.factions is missing")
     elif not isinstance(factions, dict):
         errors.append("world.session_note.factions must be an object when present")
@@ -135,8 +148,13 @@ def check_world(value: Any, active_clock_ids: set[str], errors: list[str], warni
             errors.append("world.session_note.pressure_clocks must be an object when present")
         else:
             for clock_id in note_clocks:
-                if clock_id not in active_clock_ids:
+                if clock_id not in active_clocks:
                     warnings.append(f"world.session_note.pressure_clocks.{clock_id} is not mirrored in pressure_clocks; active pressure belongs in the checkpoint ledger")
+                    continue
+                clock = active_clocks.get(clock_id)
+                status = str(clock.get("status", "")).lower() if isinstance(clock, dict) else ""
+                if status in INACTIVE_CLOCK_STATUSES:
+                    warnings.append(f"world.session_note.pressure_clocks.{clock_id} mirrors a {status} clock; move resolved pressure to phase_summaries or remove it from the active session note")
 
 
 def relationship_score(entry: Any) -> Any:
@@ -265,6 +283,43 @@ def check_recent_timeline(value: Any, errors: list[str], warnings: list[str]) ->
             errors.append(f"recent_timeline[{index}] must be a string or object")
 
 
+def affordance_label(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(item.get("label", ""))
+    return str(item)
+
+
+def check_next_affordances(value: Any, errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, list):
+        errors.append("next_affordances must be a list")
+        return
+    if len(value) < 2 or len(value) > 4:
+        warnings.append(f"next_affordances has {len(value)} entries; handoff should preserve 2-4 playable affordances")
+    labels = [affordance_label(item).strip() for item in value]
+    duplicates = duplicate_values(labels)
+    if duplicates:
+        warnings.append(f"next_affordances contains duplicate labels: {duplicates}")
+    for index, item in enumerate(value):
+        path = f"next_affordances[{index}]"
+        if isinstance(item, str):
+            if not item.strip():
+                errors.append(f"{path} must be nonempty")
+            continue
+        if not isinstance(item, dict):
+            errors.append(f"{path} must be a string or object")
+            continue
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            errors.append(f"{path}.label must be a nonempty string")
+        for key in ["tags", "targets", "state_hooks"]:
+            if key in item:
+                check_string_list(item[key], f"{path}.{key}", errors, warnings)
+        if not any(item.get(key) for key in ["tags", "targets", "state_hooks"]):
+            warnings.append(f"{path} should include tags, targets, or state_hooks for handoff fidelity")
+        if item.get("risk") and str(item["risk"]) not in AFFORDANCE_RISKS:
+            warnings.append(f"{path}.risk is unusual: {item['risk']}")
+
+
 def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -295,9 +350,9 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     if "time" in checkpoint and not isinstance(checkpoint["time"], (str, dict)):
         errors.append("time must be a string or object when present")
 
-    active_clock_ids = set(checkpoint.get("pressure_clocks", {})) if isinstance(checkpoint.get("pressure_clocks"), dict) else set()
+    active_clocks = checkpoint.get("pressure_clocks") if isinstance(checkpoint.get("pressure_clocks"), dict) else {}
     if "world" in checkpoint:
-        check_world(checkpoint.get("world"), active_clock_ids, errors, warnings)
+        check_world(checkpoint.get("world"), active_clocks, errors, warnings)
     check_attributes(checkpoint.get("attributes"), errors, warnings)
     for key in LIST_KEYS:
         if key not in {"phase_summaries", "recent_timeline"}:
@@ -307,9 +362,7 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     check_evidence(checkpoint.get("evidence"), errors, warnings)
     check_phase_summaries(checkpoint.get("phase_summaries"), checkpoint.get("open_threads"), errors, warnings)
     check_recent_timeline(checkpoint.get("recent_timeline"), errors, warnings)
-    affordances = checkpoint.get("next_affordances")
-    if isinstance(affordances, list) and (len(affordances) < 2 or len(affordances) > 4):
-        warnings.append(f"next_affordances has {len(affordances)} entries; handoff should preserve 2-4 playable affordances")
+    check_next_affordances(checkpoint.get("next_affordances"), errors, warnings)
 
     return {"ok": not errors, "errors": errors, "warnings": warnings}
 

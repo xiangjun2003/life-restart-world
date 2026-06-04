@@ -123,6 +123,20 @@ For phase closure, write a `phase_summary` or add an item to `phase_summaries` w
 
 Offer 2-4 entries. They should be affordances, not a menu lock.
 
+Player-facing entries can be short natural-language lines, but each one should have an internal intent preview:
+
+```json
+{
+  "label": "打听机房有没有边角时间，但先问清老师的规矩",
+  "tags": ["technology", "mentor", "boundary"],
+  "targets": ["mentor_teacher", "computer_room"],
+  "state_hooks": ["computer_curiosity", "mentor_teacher", "exam_deadline"],
+  "risk": "low"
+}
+```
+
+Do not show this JSON during ordinary play. Use it as a design check and as optional checkpoint detail when another agent must resume the same board.
+
 Good spread:
 
 - a steady or conservative action,
@@ -131,6 +145,8 @@ Good spread:
 - a world-specific or talent-specific action when justified.
 
 Avoid four cosmetic variants of the same plan. Each entry should imply a different cost, ally, risk, or future thread.
+
+Each entry should touch at least one current or plausible ledger hook: an attribute under pressure, a relationship, a pressure clock, evidence, a flag, an open thread, the realm, or terminal/transition state. If an entry would not change or test the state in any way, rewrite it as scene color or omit it.
 
 ## Turn Checklist
 

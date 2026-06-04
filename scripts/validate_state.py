@@ -41,6 +41,8 @@ LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
+NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
+INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
 
 
 def has_attribute_note(state: dict[str, Any], attr: str) -> bool:
@@ -305,6 +307,18 @@ def check_session_note_pressure_clocks(state: dict[str, Any], note: dict[str, An
             errors.append(f"{path}.on_fill must be a string when present")
         if clock_id not in state_clock_ids:
             warnings.append(f"{path} is not mirrored in state.pressure_clocks; active pressure belongs in the ledger")
+            continue
+        state_clock = state_clocks.get(clock_id) if isinstance(state_clocks, dict) else None
+        status = str(state_clock.get("status", "")).lower() if isinstance(state_clock, dict) else ""
+        if status in INACTIVE_CLOCK_STATUSES:
+            warnings.append(f"{path} mirrors a {status} clock; move resolved pressure to phase_summaries or remove it from the active session note")
+
+
+def has_real_content_pack(world: dict[str, Any]) -> bool:
+    content_pack = world.get("content_pack")
+    if not isinstance(content_pack, str):
+        return False
+    return content_pack.strip().lower() not in NO_PACK_PLACEHOLDERS
 
 
 def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
@@ -316,12 +330,15 @@ def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -
     for key in ["style", "premise", "content_pack"]:
         if key in world and not isinstance(world[key], str):
             errors.append(f"world.{key} must be a string when present")
+    if isinstance(world.get("content_pack"), str) and not has_real_content_pack(world):
+        warnings.append("world.content_pack looks like a no-pack placeholder; omit content_pack for custom/no-pack worlds")
+    content_pack_present = has_real_content_pack(world)
     if not world.get("premise"):
         warnings.append("world.premise is empty")
 
     session_note = world.get("session_note")
     if session_note is None:
-        if not world.get("content_pack"):
+        if not content_pack_present:
             warnings.append("custom or no-pack world should include world.session_note")
         return
     if not isinstance(session_note, dict):
@@ -349,7 +366,7 @@ def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -
 
     check_session_note_pressure_clocks(state, session_note, errors, warnings)
 
-    if not world.get("content_pack"):
+    if not content_pack_present:
         if not session_note.get("state_axes"):
             warnings.append("custom or no-pack world.session_note.state_axes is empty")
         if not session_note.get("factions"):

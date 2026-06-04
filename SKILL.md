@@ -103,6 +103,7 @@ For each playable turn, respond in this order:
 4. Action entries:
    - Include 2-4 plausible action entries.
    - Make them affordances, not hard limits. Each entry should imply a different method, cost, ally, risk, or future thread.
+   - Internally map each entry to tags, targets, state hooks, and risk; keep that structure hidden unless debug or checkpoint handoff needs it.
    - End with a reminder that the user can answer freely.
 
 Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.

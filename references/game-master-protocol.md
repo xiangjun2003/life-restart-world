@@ -4,6 +4,8 @@ Host the game as a narrator, referee, and state keeper. The state ledger is the 
 
 For custom worlds, create a compact session world note when it would prevent drift. Use `session-world.md` for the shape. The note is less formal than a content pack and should remain easy to revise during play.
 
+If no content pack fits, omit `world.content_pack` and host from the session world note plus protagonist ledger. Do not use an empty string or placeholder pack name to mean no-pack.
+
 ## Opening Guidance
 
 Open by getting the user into play quickly. If the user provides a premise such as "12岁开始，90年代小县城，聪明但家里穷" or "20岁大二，调查奖学金算法", infer reasonable defaults and start. Do not answer with a long setup questionnaire when the premise already contains a playable situation.
@@ -190,6 +192,8 @@ When the user selects an entry, use it as the base intent. When the user modifie
 
 If a free-form action has no authored event, make a state-led ruling and record a `manual_*` event trace. If it partially overlaps an authored event, you may combine them, such as `exam_crossroads + manual_family_confession`, as long as both appear in `event_history` and the timeline. If the action is implausible, resolve it as an attempt with cost, risk, and consequences.
 
+Internally, each entry should be mappable to an intent preview with a label, tags, targets, state hooks, and risk. Keep that preview hidden in ordinary play, but use it while designing entries and preserve it in checkpoints when a future agent needs to resume the same board. A good entry points at a state hook such as a relationship, pressure clock, evidence item, open thread, attribute under pressure, realm transition, or terminal risk.
+
 ## Event Candidate Sources
 
 When event packs are relevant, use three candidate pools:
@@ -297,7 +301,29 @@ Treat checkpoint validation errors as handoff blockers. Warnings usually mean th
     "15岁：用家庭预算谈判换来部分信任。",
     "16岁春：电脑使用变成家庭约定。"
   ],
-  "next_affordances": ["冲刺考试", "修复家庭信任", "扩大电脑路径"]
+  "next_affordances": [
+    {
+      "label": "冲刺考试，同时保护睡眠和情绪",
+      "tags": ["study", "discipline", "health"],
+      "targets": ["exam_path"],
+      "state_hooks": ["exam_deadline", "SPR", "WIL"],
+      "risk": "medium"
+    },
+    {
+      "label": "和母亲谈清城市求学后的家庭支持承诺",
+      "tags": ["family", "honesty", "money"],
+      "targets": ["mother"],
+      "state_hooks": ["family_budget_pressure", "family_promise"],
+      "risk": "medium"
+    },
+    {
+      "label": "请李老师介绍更稳定的电脑学习路径",
+      "tags": ["technology", "mentor"],
+      "targets": ["teacher_li", "computer_path"],
+      "state_hooks": ["mentor_teacher", "computer_curiosity"],
+      "risk": "low"
+    }
+  ]
 }
 ```
 

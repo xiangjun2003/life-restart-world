@@ -4,6 +4,8 @@ Use this for custom worlds when a full content pack would be too heavy. The note
 
 The session world note is reference material, not an engine. It should constrain interpretation, event selection, and consequences, but the canonical play state remains the state ledger.
 
+For custom or no-pack worlds, omit `world.content_pack` rather than writing an empty string or placeholder. If a real pack is only partially relevant, name it only when it is actually being consulted and keep the session world note as the stronger source of truth for this run.
+
 ## Minimal Shape
 
 ```json
@@ -40,6 +42,8 @@ Keep it short. A good note fits in one screen and can be updated when the user a
 `scripts/validate_state.py` checks the basic shape of `world.session_note` when it is present. For custom or no-pack worlds, expect warnings if the note is missing, has no `state_axes`, or has no `factions`.
 
 Keep active pressure in the protagonist ledger. If `world.session_note.pressure_clocks` names a live clock, mirror it in top-level `pressure_clocks`; otherwise the note has become hidden state instead of context.
+
+When a pressure clock is resolved, closed, or archived, remove it from `world.session_note.pressure_clocks` or preserve the result in `phase_summaries`. The session note should not keep resolved clocks alive as if they still drive the board.
 
 ## When To Create One
 

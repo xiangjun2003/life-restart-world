@@ -47,6 +47,8 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
 }
 ```
 
+Use `world.content_pack` only for a real referenced pack such as `classic-lite`. For custom or no-pack worlds, omit the field and include `world.session_note`; do not use empty-string placeholders.
+
 ## Attributes
 
 - `CHR`: presence, charm, appearance, social first impression.
@@ -198,6 +200,22 @@ Good checkpoints preserve:
 They omit resolved clutter unless it is needed to understand a current relationship, flag, evidence item, or pressure clock. If the checkpoint is later resumed, rebuild the internal ledger from the checkpoint and continue; do not retcon recent timeline facts to fit a new random event.
 
 Compact checkpoint display is allowed, but resumed play must expand back to the full ledger shape. Avoid leaving clocks as strings like `"3/4"` or evidence as bare strings in the reconstructed state; use objects with stage/limit/meaning, status/claim, holders, and risk where relevant.
+
+`next_affordances` may be compact strings or small objects. Use objects when handoff fidelity matters:
+
+```json
+{
+  "label": "请李老师介绍更稳定的电脑学习路径",
+  "tags": ["technology", "mentor"],
+  "targets": ["teacher_li", "computer_path"],
+  "state_hooks": ["mentor_teacher", "computer_curiosity"],
+  "risk": "low"
+}
+```
+
+The label is what a player can read; the other fields help the next agent preserve intent and state pressure without treating the event library as an engine.
+
+If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
 
 Use `scripts/validate_checkpoint.py` for handoff capsules that are meant to be resumed by another agent. It checks the portable checkpoint shape; after resuming into a full ledger, use `scripts/validate_state.py`.
 
