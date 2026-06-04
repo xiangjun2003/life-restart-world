@@ -40,6 +40,7 @@ ATTRIBUTES = ["CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL"]
 LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
+PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 
 
 def load_state(value: str) -> dict[str, Any]:
@@ -194,6 +195,10 @@ def check_timeline_and_history(state: dict[str, Any], errors: list[str], warning
     if not isinstance(timeline, list) or not isinstance(history, list):
         return
     turn = int_or_none(state.get("turn")) or 0
+    age = int_or_none(state.get("age")) or 0
+    flags = {str(item) for item in state.get("flags", [])} if isinstance(state.get("flags"), list) else set()
+    if age > 0 and not timeline and not flags.intersection(PROLOGUE_EXCEPTION_FLAGS):
+        warnings.append("later-age state has empty timeline; add a compressed prologue or an explicit missing-records flag")
     if turn > 0 and not timeline:
         warnings.append("timeline is empty after play has advanced")
     if turn > 0 and not history:

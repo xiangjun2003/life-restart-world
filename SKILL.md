@@ -37,15 +37,15 @@ Load only what is needed:
 ## Hosting Workflow
 
 1. Establish play mode.
-   - If the user gave enough detail, infer the mode and begin.
-   - Otherwise ask a compact opening prompt: world style, randomness level, and pace.
+   - If the user gave enough detail, infer the mode and begin with a first playable response.
+   - Otherwise ask a compact opening prompt: world style, randomness level, and pace. Ask only for missing essentials, not for a full form.
    - Default to `narrative-first`, `semi-random`, `standard` pace.
    - For custom worlds, draft a short session world note before resolving turns. This is a consistency aid, not a content-pack requirement.
 
 2. Create the initial state ledger.
    - Include `age`, `life_cap`, `existence_state`, `realm`, attributes, talents, relationships, flags, event history, open threads, and terminal status.
    - If the user requests a later starting age or situation, generate a compressed prologue first, then begin interactive play at that age with a causally grounded state.
-   - Give the user a short character card before the first turn.
+   - Give the user a short character card before the first turn, then immediately offer 2-4 playable action entries. Do not print raw JSON unless the user asks for debug view.
 
 3. Resolve each turn in this order.
    - Interpret the user's natural-language action into an intent object.

@@ -6,6 +6,8 @@ For custom worlds, create a compact session world note when it would prevent dri
 
 ## Opening Guidance
 
+Open by getting the user into play quickly. If the user provides a premise such as "12岁开始，90年代小县城，聪明但家里穷" or "20岁大二，调查奖学金算法", infer reasonable defaults and start. Do not answer with a long setup questionnaire when the premise already contains a playable situation.
+
 If the user has not specified a premise, ask a compact opening:
 
 ```text
@@ -24,6 +26,46 @@ If the user has not specified a premise, ask a compact opening:
 ```
 
 If the user gives a direct premise, skip the questionnaire and infer defaults.
+
+When one important piece is missing, ask at most one short follow-up. For example, if the user says only "来一局", ask the compact opening. If the user says "随机但现实一点", infer `classic-lite`, semi-random traits, and standard pace.
+
+## First Playable Response
+
+The first response should be playable, not just configurational. Use this shape:
+
+1. One-line premise and inferred mode.
+2. Compressed prologue if the start is after birth or has implied history.
+3. Character card with name or identity, age/time, attributes, talents, key relationships, pressure, and main threads.
+4. Current scene in 1-3 paragraphs.
+5. 2-4 action entries plus a free-form reminder.
+
+Keep raw ledger JSON internal unless the user asks for it. The visible character card is a compact projection of the ledger; the internal ledger still contains timeline, event history, flags, clocks, evidence, and open threads.
+
+Keep engine diagnostics out of ordinary player-facing openings. In playtests or debug mode, record unsupported content packs, strict probe failures, and manual hosting labels separately. For normal play, a custom world can simply begin as a custom world; the user does not need to see "content pack mismatch" or "manual hosting" unless they ask how the system is adjudicating.
+
+Example first playable response:
+
+```text
+开局：90年代小县城，半随机，标准节奏。
+
+前史：你出生在职工楼，家里常算账；7岁被李老师发现读书快；10岁开始偷偷攒练习册钱；12岁时，你第一次在学校机房门口停下脚步。
+
+角色卡：
+12岁，县城初一。INT 8 / STR 4 / MNY 2 / SPR 5 / WIL 7
+天赋：早慧、拗劲
+关系：母亲 +2，李老师 +2
+压力：家庭经济 2/5，升学压力 1/4
+主线：exam_path、money_vs_study、computer_curiosity
+
+现在，李老师把一叠旧卷子放到你桌上...
+
+接下来你可以：
+1. 先稳住成绩，换取老师更多信任
+2. 打听机房有没有边角时间
+3. 和家里谈练习册和钱的问题
+
+也可以直接说你想做什么。
+```
 
 ## Starting After Birth
 

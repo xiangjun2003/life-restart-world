@@ -27,6 +27,8 @@ The purpose of playtesting is to expose missing capabilities, not to produce the
 For each playtest, record:
 
 - Opening premise and start state.
+- Whether the first response began playable or over-asked for setup.
+- For later-age starts, whether the compressed prologue produced timeline and event_history entries instead of a blank state.
 - Whether hosting was manual, script-assisted, or script-driven.
 - Each turn's user action, event or adjudication, state delta, and next affordances.
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
