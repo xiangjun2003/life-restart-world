@@ -35,6 +35,12 @@ The session world note is reference material, not an engine. It should constrain
 
 Keep it short. A good note fits in one screen and can be updated when the user adds decisive world facts.
 
+## Validation
+
+`scripts/validate_state.py` checks the basic shape of `world.session_note` when it is present. For custom or no-pack worlds, expect warnings if the note is missing, has no `state_axes`, or has no `factions`.
+
+Keep active pressure in the protagonist ledger. If `world.session_note.pressure_clocks` names a live clock, mirror it in top-level `pressure_clocks`; otherwise the note has become hidden state instead of context.
+
 ## When To Create One
 
 Create or update a session world note when:

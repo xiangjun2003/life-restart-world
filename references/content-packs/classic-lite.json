@@ -270,6 +270,7 @@
       "weight": 4,
       "repeatable": false,
       "include": "flags?[teacher_noticed]|flags?[classmate_friendship]",
+      "age_advance": "none",
       "tags": ["education", "investigation", "evidence", "ethics"],
       "effects": {"INT": 1, "SPR": -1, "WIL": 1},
       "set_flags": ["anonymous_fee_notes"],
@@ -293,6 +294,7 @@
       "weight": 4,
       "repeatable": false,
       "include": "flags?[anonymous_fee_notes]",
+      "age_advance": "none",
       "tags": ["education", "investigation", "evidence", "ethics", "school"],
       "effects": {"SPR": -1},
       "set_flags": ["public_fee_verification"],
@@ -320,6 +322,7 @@
       "weight": 5,
       "repeatable": false,
       "include": "flags?[anonymous_fee_notes]&flags?[teacher_noticed]",
+      "age_advance": "none",
       "tags": ["education", "investigation", "evidence", "ethics", "mentor"],
       "effects": {"SPR": 1},
       "set_flags": ["teacher_boundary_guardrail"],
@@ -350,6 +353,7 @@
       "weight": 4,
       "repeatable": false,
       "include": "flags?[public_fee_verification]|flags?[teacher_boundary_guardrail]",
+      "age_advance": "none",
       "tags": ["education", "investigation", "evidence", "ethics"],
       "effects": {"INT": 1, "SPR": -1},
       "set_flags": ["anonymized_fee_matrix"],
@@ -377,6 +381,7 @@
       "weight": 5,
       "repeatable": false,
       "include": "flags?[anonymized_fee_matrix]&flags?[teacher_boundary_guardrail]",
+      "age_advance": "none",
       "tags": ["education", "investigation", "evidence", "ethics", "mentor", "school"],
       "effects": {"WIL": 1, "SPR": 1},
       "set_flags": ["school_fee_mediated"],
@@ -401,6 +406,38 @@
       },
       "narrative_seed": "The student chooses an adult channel: not public victory, but a cleaner chain of custody and less direct exposure.",
       "choices": ["Wait for the teacher's reply", "Return attention to exams", "Tell family only the safe outline"]
+    },
+    {
+      "id": "school_fee_followup_result",
+      "title": "代问后的回音",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "flags?[school_fee_mediated]",
+      "age_advance": "none",
+      "tags": ["education", "investigation", "evidence", "ethics", "school", "resolution"],
+      "effects": {"SPR": 1},
+      "set_flags": ["school_fee_followup_result"],
+      "close_threads": ["school_fee_followup"],
+      "open_threads": ["exam_focus_recovery"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "returns with a bounded clarification and protects the student's role"},
+        "school_admin": {"delta": 1, "note": "offers a limited correction without inviting public escalation"}
+      },
+      "evidence": {
+        "fee_clarification_result": {
+          "claim": "A limited fee clarification or correction was relayed through the teacher after the anonymized packet.",
+          "status": "partial_clarification",
+          "holders": ["self", "mentor_teacher"],
+          "risk": "low"
+        }
+      },
+      "pressure_clocks": {
+        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
+      },
+      "narrative_seed": "The reply is modest, not triumphant: enough to cool the risk, record what changed, and return the student to the exam week.",
+      "choices": ["Return to exam focus", "Keep the clarification private", "Ask what can be safely checked later"]
     },
     {
       "id": "school_computer_room_access",
@@ -837,7 +874,7 @@
     "0": [{"event_id": "birth_county", "weight": 20}],
     "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
     "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "primary_school_routine", "weight": 6}, {"event_id": "playground_confidence", "weight": 5}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}, {"event_id": "public_fee_verification", "weight": 4}, {"event_id": "teacher_boundary_counsel", "weight": 5}, {"event_id": "anonymized_fee_matrix", "weight": 4}, {"event_id": "teacher_mediation_request", "weight": 5}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}, {"event_id": "public_fee_verification", "weight": 4}, {"event_id": "teacher_boundary_counsel", "weight": 5}, {"event_id": "anonymized_fee_matrix", "weight": 4}, {"event_id": "teacher_mediation_request", "weight": 5}, {"event_id": "school_fee_followup_result", "weight": 4}],
     "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "family_budget_conversation", "weight": 7}, {"event_id": "computer_shop_barter", "weight": 5}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "family_computer_schedule_contract", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
     "17-20": [{"event_id": "admission_notice_transition", "weight": 8}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],

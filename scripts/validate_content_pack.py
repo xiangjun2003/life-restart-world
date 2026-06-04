@@ -37,7 +37,7 @@ LIST_KEYS = [
 ]
 
 NUMERIC_EVENT_KEYS = {"weight", "life_cap"}
-STRING_EVENT_KEYS = {"realm", "existence_state", "realm_transition", "terminal_reason", "narrative_seed"}
+STRING_EVENT_KEYS = {"realm", "existence_state", "realm_transition", "terminal_reason", "narrative_seed", "age_advance"}
 BOOLEAN_EVENT_KEYS = {"repeatable", "terminal", "clear_terminal"}
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 AGE_POOL_RE = re.compile(r"^\d+(?:-\d+)?$")

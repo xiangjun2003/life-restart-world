@@ -89,7 +89,7 @@ Passing validation does not make the pack a canonical engine. The Game Master st
 ## Event Fields
 
 - `age` or `age_range`: match by current age. Use `null` for timeless events.
-- `age_advance`: optional. Set to `none` for immediate transition events that should not consume years in helper-script stepping.
+- `age_advance`: optional. Set to `none` for immediate, same-week, or transition events that should not consume years in helper-script stepping. The Game Master should still maintain `time` when several playable turns share the same age.
 - `realm`: omit or set to `any` to match all realms.
 - `weight`: random weight before action relevance.
 - `repeatable`: default `false`.

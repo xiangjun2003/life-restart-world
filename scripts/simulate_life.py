@@ -439,15 +439,16 @@ def apply_event(state: dict[str, Any], event: dict[str, Any], intent: dict[str, 
     event_id = event.get("id", "generated_event")
     if event_id not in state.get("event_history", []):
         state.setdefault("event_history", []).append(event_id)
-    state.setdefault("timeline", []).append(
-        {
-            "turn": state.get("turn"),
-            "age": state.get("age"),
-            "event_id": event_id,
-            "title": event.get("title"),
-            "action": intent.get("summary"),
-        }
-    )
+    timeline_item = {
+        "turn": state.get("turn"),
+        "age": state.get("age"),
+        "event_id": event_id,
+        "title": event.get("title"),
+        "action": intent.get("summary"),
+    }
+    if "time" in state:
+        timeline_item["time"] = state["time"]
+    state.setdefault("timeline", []).append(timeline_item)
     return event
 
 

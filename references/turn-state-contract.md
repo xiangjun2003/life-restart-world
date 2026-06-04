@@ -96,6 +96,8 @@ Prefer small deltas. A vivid scene does not need many flags, but any fact that c
 
 As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
 
+Keep relationship scores within `-5..5`. Do not keep every named person or faction active forever; archive inactive contacts into `phase_summaries`, relationship notes, evidence holders, or timeline summaries so the current relationship board stays playable.
+
 ## State Snapshot
 
 After applying the delta, show a compact snapshot:

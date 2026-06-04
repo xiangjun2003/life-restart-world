@@ -233,6 +233,94 @@ def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings
                         errors.append(f"phase_summaries[{index}].{key} must be a list when present")
 
 
+def check_string_list_value(value: Any, path: str, errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, list):
+        errors.append(f"{path} must be a list when present")
+        return
+    duplicates = duplicate_values(value)
+    if duplicates:
+        warnings.append(f"{path} contains duplicate values: {duplicates}")
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            errors.append(f"{path}[{index}] must be a nonempty string")
+
+
+def check_session_note_pressure_clocks(state: dict[str, Any], note: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    clocks = note.get("pressure_clocks")
+    if clocks is None:
+        return
+    if not isinstance(clocks, dict):
+        errors.append("world.session_note.pressure_clocks must be an object when present")
+        return
+    state_clocks = state.get("pressure_clocks")
+    state_clock_ids = set(state_clocks) if isinstance(state_clocks, dict) else set()
+    for clock_id, clock in clocks.items():
+        path = f"world.session_note.pressure_clocks.{clock_id}"
+        if not isinstance(clock, dict):
+            errors.append(f"{path} must be an object")
+            continue
+        for key in ["stage", "limit"]:
+            if key in clock and not is_int_like(clock[key]):
+                errors.append(f"{path}.{key} must be numeric")
+        if is_int_like(clock.get("limit")) and int(clock["limit"]) <= 0:
+            errors.append(f"{path}.limit must be positive")
+        if not clock.get("meaning"):
+            warnings.append(f"{path}.meaning is empty")
+        if "on_fill" in clock and not isinstance(clock["on_fill"], str):
+            errors.append(f"{path}.on_fill must be a string when present")
+        if clock_id not in state_clock_ids:
+            warnings.append(f"{path} is not mirrored in state.pressure_clocks; active pressure belongs in the ledger")
+
+
+def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    world = state.get("world")
+    if not isinstance(world, dict):
+        errors.append("world must be an object")
+        return
+
+    for key in ["style", "premise", "content_pack"]:
+        if key in world and not isinstance(world[key], str):
+            errors.append(f"world.{key} must be a string when present")
+    if not world.get("premise"):
+        warnings.append("world.premise is empty")
+
+    session_note = world.get("session_note")
+    if session_note is None:
+        if not world.get("content_pack"):
+            warnings.append("custom or no-pack world should include world.session_note")
+        return
+    if not isinstance(session_note, dict):
+        errors.append("world.session_note must be an object when present")
+        return
+
+    for key in ["premise", "tone", "scale"]:
+        if key in session_note and not isinstance(session_note[key], str):
+            errors.append(f"world.session_note.{key} must be a string when present")
+
+    for key in ["boundaries", "state_axes", "evidence_tracks", "event_seeds", "likely_choices", "terminal_paths"]:
+        if key in session_note:
+            check_string_list_value(session_note[key], f"world.session_note.{key}", errors, warnings)
+
+    factions = session_note.get("factions")
+    if factions is not None:
+        if not isinstance(factions, dict):
+            errors.append("world.session_note.factions must be an object when present")
+        else:
+            for faction_id, faction in factions.items():
+                if not isinstance(faction_id, str) or not faction_id.strip():
+                    errors.append("world.session_note.factions keys must be nonempty strings")
+                if not isinstance(faction, (str, dict)):
+                    errors.append(f"world.session_note.factions.{faction_id} must be a string or object")
+
+    check_session_note_pressure_clocks(state, session_note, errors, warnings)
+
+    if not world.get("content_pack"):
+        if not session_note.get("state_axes"):
+            warnings.append("custom or no-pack world.session_note.state_axes is empty")
+        if not session_note.get("factions"):
+            warnings.append("custom or no-pack world.session_note.factions is empty")
+
+
 def check_timeline_and_history(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     timeline = state.get("timeline")
     history = state.get("event_history")
@@ -341,8 +429,7 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
                 if existence_state in {"mortal", "resurrected"} and (value < 0 or value > 12) and not has_attribute_note(state, attr):
                     warnings.append(f"attributes.{attr}={value} is outside the ordinary human range; explain it or clamp future deltas")
 
-    if not isinstance(state.get("world"), dict):
-        errors.append("world must be an object")
+    check_world(state, errors, warnings)
     for key in LIST_KEYS:
         check_list(state, key, errors)
 
