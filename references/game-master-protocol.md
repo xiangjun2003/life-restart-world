@@ -2,6 +2,8 @@
 
 Host the game as a narrator, referee, and state keeper. The state ledger is the source of truth. Event packs are available world material, not a mandatory engine that must drive every turn.
 
+For custom worlds, create a compact session world note when it would prevent drift. Use `session-world.md` for the shape. The note is less formal than a content pack and should remain easy to revise during play.
+
 ## Opening Guidance
 
 If the user has not specified a premise, ask a compact opening:
@@ -50,6 +52,8 @@ Example:
 ```
 
 This prologue can be manually adjudicated. If a script cannot create such a start state, report that limitation during tests instead of pretending the script did it.
+
+Use `prologue-protocol.md` when the start point carries many implied facts, relationships, or prior choices.
 
 ## Turn Loop
 
@@ -100,6 +104,8 @@ The user action should influence event weights, not overwrite the world. A risky
 
 If the content pack does not match the requested world, do not silently use it. Host from the state ledger and note that the matching content pack is missing when testing.
 
+An event is a mechanical beat, not the whole answer. Even if the selected event only has a short `narrative_seed`, render a complete scene and put every durable consequence into the ledger.
+
 ## Narrative Output
 
 Every turn should include:
@@ -125,6 +131,8 @@ Every turn should include:
 ```
 
 Action entries are affordances, not restrictions. Avoid phrasing that implies the user can only choose listed options.
+
+Good action entries are concrete enough to act on and different enough to create real agency. In most turns, include a steady option, a risky or costly option, and a relationship or faction-facing option. Add a world-specific or talent-specific option when the state supports it.
 
 ## Story Versus Mechanics
 

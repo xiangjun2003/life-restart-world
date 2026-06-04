@@ -16,7 +16,12 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
   "realm": "human_world",
   "world": {
     "style": "realistic",
-    "premise": "ordinary life with rare legendary branches"
+    "premise": "ordinary life with rare legendary branches",
+    "session_note": {
+      "tone": "grounded with rare legendary branches",
+      "state_axes": ["education_path", "family_pressure"],
+      "pressure_clocks": {}
+    }
   },
   "attributes": {
     "CHR": 4,
@@ -29,6 +34,7 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
   },
   "talents": [],
   "relationships": {},
+  "pressure_clocks": {},
   "flags": [],
   "event_history": [],
   "open_threads": [],
@@ -74,13 +80,35 @@ Default `standard` pace should produce about 25-45 meaningful turns.
 
 Age increments are not rigid. A turn is a meaningful life beat. Youth usually moves slower than later adulthood. Supernatural states may use decades or realm breakthroughs as beats.
 
+For `standard` pace, a useful default is:
+
+- Ages 0-6: 1-2 years per turn unless a childhood scene is important.
+- Ages 7-22: usually 1 year per turn.
+- Ages 23-45: 1-2 years per turn.
+- Ages 46-70: 2-4 years per turn.
+- Ages 70+: 3-7 years per turn, unless a terminal or relationship scene needs focus.
+- Cultivation, ascension, immortality, and post-human play can use breakthroughs, eras, or realm transitions instead of calendar years.
+
 ## State Discipline
 
 - Put durable facts in `flags`, not only in prose.
 - Put unresolved goals or tensions in `open_threads`.
 - Put recurring people in `relationships` with a score from `-5` to `5` and a short note when helpful.
+- Put slow pressure in `pressure_clocks` when a binary flag is too crude.
 - Put all triggered event IDs in `event_history`.
 - Put each turn's story summary in `timeline`.
+
+Relationship entries should be small but explicit:
+
+```json
+{
+  "mother": {"score": 2, "note": "protective, worried about money"},
+  "teacher_li": {"score": 3, "note": "sees promise and expects discipline"},
+  "classmate_chen": {"score": -1, "note": "resentful after a public comparison"}
+}
+```
+
+Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns.
 
 ## Prologue State
 

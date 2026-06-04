@@ -25,6 +25,8 @@ Load only what is needed:
 
 - `references/game-master-protocol.md`: turn loop, opening guidance, natural-language action handling, output format.
 - `references/world-model.md`: canonical state ledger, attributes, flags, immortality and ascension states.
+- `references/session-world.md`: lightweight world note for custom settings, factions, pressure clocks, and event seeds.
+- `references/prologue-protocol.md`: concrete later-age start and compressed backstory procedure.
 - `references/content-pack-schema.md`: JSON schema for events, talents, choices, effects, and conditions.
 - `references/upstream-mapping.md`: how the original Life Restart modules and XLSX sheets map into this skill.
 - `references/safety-boundaries.md`: safety rules for fictional death, reincarnation, minors, self-harm, and high-risk content.
@@ -37,6 +39,7 @@ Load only what is needed:
    - If the user gave enough detail, infer the mode and begin.
    - Otherwise ask a compact opening prompt: world style, randomness level, and pace.
    - Default to `narrative-first`, `semi-random`, `standard` pace.
+   - For custom worlds, draft a short session world note before resolving turns. This is a consistency aid, not a content-pack requirement.
 
 2. Create the initial state ledger.
    - Include `age`, `life_cap`, `existence_state`, `realm`, attributes, talents, relationships, flags, event history, open threads, and terminal status.
@@ -74,7 +77,7 @@ python3 scripts/simulate_life.py demo --seed 7 --turns 5
 
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
 
-When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events would hide a missing event.
+When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.
 
 ## Output Shape For Play
 

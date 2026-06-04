@@ -29,12 +29,26 @@ ACTION_TAGS = {
     "study": {"学习", "读书", "考试", "学校", "成绩", "study", "exam", "school"},
     "work": {"打工", "赚钱", "工作", "兼职", "创业", "work", "job", "earn", "business"},
     "money": {"钱", "电脑", "买", "攒钱", "money", "computer", "buy"},
+    "technology": {"电脑", "编程", "代码", "互联网", "技术", "ai", "computer", "code", "internet", "technology"},
     "family": {"家", "父母", "母亲", "父亲", "亲人", "family", "parent"},
     "secret": {"偷偷", "隐瞒", "不告诉", "秘密", "secret", "hide"},
     "relationship": {"朋友", "恋人", "老师", "关系", "friend", "love", "teacher"},
     "health": {"身体", "锻炼", "病", "健康", "health", "train"},
     "cultivation": {"修仙", "飞升", "灵根", "功法", "cultivation", "ascend"},
     "risk": {"冒险", "赌", "拼", "risk", "danger"},
+}
+
+TAG_GROUPS = {
+    "study": {"study", "education", "exam", "school", "mentor"},
+    "work": {"work", "job", "business", "career", "achievement", "city"},
+    "money": {"money", "resources", "poverty", "technology"},
+    "technology": {"technology", "computer", "code", "internet"},
+    "family": {"family", "parent", "origin"},
+    "secret": {"secret", "hide", "mystery"},
+    "relationship": {"relationship", "family", "mentor", "friend", "love", "regret"},
+    "health": {"health", "body", "illness"},
+    "cultivation": {"cultivation", "ascend", "ascension", "mystery", "longevity"},
+    "risk": {"risk", "danger", "choice", "crossroads"},
 }
 
 
@@ -350,12 +364,48 @@ def pool_weight(pack: dict[str, Any], event_id: str, age: int) -> int | None:
 
 
 def action_relevance(event: dict[str, Any], intent: dict[str, Any]) -> float:
-    event_tags = set(event.get("tags", []))
-    action_tags = set(intent.get("tags", []))
+    event_tags = semantic_tags(event.get("tags", []))
+    action_tags = semantic_tags(intent.get("tags", []))
     overlap = len(event_tags & action_tags)
     if not action_tags:
         return 1.0
     return 1.0 + overlap * 1.4
+
+
+def semantic_tags(tags: Any) -> set[str]:
+    if isinstance(tags, str):
+        raw_tags = {tags}
+    else:
+        raw_tags = {str(tag) for tag in (tags or [])}
+    expanded = set(raw_tags)
+    for tag in raw_tags:
+        for group, members in TAG_GROUPS.items():
+            if tag == group or tag in members:
+                expanded.add(group)
+                expanded.update(members)
+    return expanded
+
+
+def intent_aligned(event: dict[str, Any], intent: dict[str, Any]) -> bool:
+    action_tags = semantic_tags(intent.get("tags", []))
+    if not action_tags:
+        return True
+    event_tags = semantic_tags(event.get("tags", []))
+    return bool(event_tags & action_tags)
+
+
+def summarize_candidates(candidates: list[tuple[dict[str, Any], float]]) -> list[dict[str, Any]]:
+    summary = []
+    for event, weight in candidates[:8]:
+        summary.append(
+            {
+                "id": event.get("id"),
+                "title": event.get("title"),
+                "tags": event.get("tags", []),
+                "weight": round(weight, 3),
+            }
+        )
+    return summary
 
 
 def collect_candidates(pack: dict[str, Any], state: dict[str, Any], intent: dict[str, Any]) -> list[tuple[dict[str, Any], float]]:
@@ -515,10 +565,16 @@ def create_state(pack: dict[str, Any], args: argparse.Namespace) -> dict[str, An
             "style": args.style,
             "premise": args.world or "ordinary life with rare legendary branches",
             "content_pack": pack.get("id"),
+            "session_note": {
+                "tone": args.style,
+                "state_axes": [],
+                "pressure_clocks": {},
+            },
         },
         "attributes": attrs,
         "talents": talents,
         "relationships": {},
+        "pressure_clocks": {},
         "flags": [],
         "event_history": [],
         "open_threads": [],
@@ -589,6 +645,22 @@ def command_turn(args: argparse.Namespace) -> None:
     age_step = advance_age(state, rng)
     state["turn"] = int(state.get("turn", 0)) + 1
     candidates = collect_candidates(pack, state, intent)
+    if args.strict and intent.get("tags"):
+        aligned_candidates = [(event, weight) for event, weight in candidates if intent_aligned(event, intent)]
+        if candidates and not aligned_candidates:
+            result = {
+                "error": "weak_intent_match",
+                "intent": intent,
+                "age_step": age_step,
+                "candidate_summaries": summarize_candidates(candidates),
+                "state_delta": {},
+                "state": before,
+                "probe_state": state,
+                "gm_instruction": "Strict mode found only weakly related age-valid events. Report this gap instead of using an unrelated event. Keep state as the canonical pre-turn state; probe_state is diagnostic only.",
+            }
+            print(dump(result))
+            raise SystemExit(3)
+        candidates = aligned_candidates
     if not candidates and args.strict:
         result = {
             "error": "no_matching_event",
