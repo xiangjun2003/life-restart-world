@@ -67,6 +67,8 @@ Each turn follows:
 6. Narrate a complete scene.
 7. Offer next action entries.
 
+Use `turn-state-contract.md` for complex or custom turns. It defines the internal intent, resolution, delta, snapshot, and choice checks.
+
 ## Natural-Language Action Parsing
 
 Users can:
@@ -120,7 +122,9 @@ Every turn should include:
 
 当前：
 13岁，县城初中，INT 8 / STR 5 / MNY 3 / SPR 4
-主线：升学压力、家庭经济紧张
+关系：张老师 +2，母亲 +1
+压力：升学压力 2/4，家庭经济紧张 3/5
+主线：exam_path、money_vs_study
 
 接下来你可以：
 1. 稳住成绩，争取老师帮助

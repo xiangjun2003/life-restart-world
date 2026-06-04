@@ -25,6 +25,7 @@ Load only what is needed:
 
 - `references/game-master-protocol.md`: turn loop, opening guidance, natural-language action handling, output format.
 - `references/world-model.md`: canonical state ledger, attributes, flags, immortality and ascension states.
+- `references/turn-state-contract.md`: state-first turn contract, intent, resolution, delta, and affordance rules.
 - `references/session-world.md`: lightweight world note for custom settings, factions, pressure clocks, and event seeds.
 - `references/prologue-protocol.md`: concrete later-age start and compressed backstory procedure.
 - `references/content-pack-schema.md`: JSON schema for events, talents, choices, effects, and conditions.
@@ -50,7 +51,7 @@ Load only what is needed:
    - Interpret the user's natural-language action into an intent object.
    - Consult relevant event packs and open threads when they fit the world.
    - Adjudicate what happens from state, user intent, genre, and any matching event material.
-   - Apply effects to the state ledger.
+   - Apply effects to the state ledger using the turn state contract.
    - Render a complete story scene from the rule result.
    - Present state deltas and 2-4 action entries, while allowing free-form action.
 
@@ -73,6 +74,7 @@ python3 scripts/simulate_life.py new --world "1990s county realism" --seed 7
 python3 scripts/simulate_life.py turn --state state.json --action "I study hard but secretly earn money"
 python3 scripts/simulate_life.py turn --state state.json --intent intent.json --strict
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
+python3 scripts/validate_state.py state.json
 ```
 
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.

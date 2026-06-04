@@ -26,6 +26,7 @@ For each playtest, record:
 - Opening premise and start state.
 - Whether hosting was manual, script-assisted, or script-driven.
 - Each turn's user action, event or adjudication, state delta, and next affordances.
+- Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
 - Any mismatch between the requested world and available event packs.
 - Any state drift, missing relationship mechanics, unclear instruction, or safety concern.
 
