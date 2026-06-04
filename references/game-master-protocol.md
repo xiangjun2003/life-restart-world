@@ -106,6 +106,20 @@ If the user gives no action, use a plausible default consistent with the charact
 
 For script-assisted play, pass an explicit intent object with `--intent` when available. Keyword parsing is only a fallback convenience, not the main understanding layer.
 
+## Action Entries And Free Action
+
+Action entries are affordances: visible handles into the current state, not a closed menu. They should make the next turn easier to imagine while preserving the user's right to act freely.
+
+Design each entry with a different play vector:
+
+- a different target, such as self, family, teacher, faction, rival, evidence, body, money, or supernatural force,
+- a different method, such as patience, secrecy, confrontation, negotiation, sacrifice, study, work, research, or flight,
+- a different risk surface, such as relationship damage, money loss, deadline pressure, health cost, moral cost, exposure, or missed opportunity.
+
+When the user selects an entry, use it as the base intent. When the user modifies it, preserve the modification even if it changes the risk or target. When the user ignores the entries, parse the free-form action directly from the current state; do not squeeze it into the nearest entry just because an entry exists.
+
+If a free-form action has no authored event, make a state-led ruling and record a `manual_*` event trace. If it partially overlaps an authored event, you may combine them, such as `exam_crossroads + manual_family_confession`, as long as both appear in `event_history` and the timeline. If the action is implausible, resolve it as an attempt with cost, risk, and consequences.
+
 ## Event Candidate Sources
 
 When event packs are relevant, use three candidate pools:

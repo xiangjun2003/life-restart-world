@@ -28,8 +28,10 @@ Convert the user's action into a semantic intent:
 ```json
 {
   "summary": "ask the teacher for computer-room access while hiding the part-time job",
+  "source": "modified_entry",
   "selected_entry": 3,
   "modifiers": ["partial truth", "protect family from worry"],
+  "targets": ["mentor_teacher", "computer_room", "family"],
   "tags": ["study", "technology", "relationship", "secret"],
   "risk": "medium",
   "checks": ["INT", "CHR", "WIL"],
@@ -38,6 +40,13 @@ Convert the user's action into a semantic intent:
 ```
 
 If the user says "选 2，但..." preserve both the selected entry and the modification. If the user ignores the entries, parse the free-form action directly.
+
+Use `source` to avoid accidentally turning free play into menu play:
+
+- `entry`: the user selected an entry without changing it.
+- `modified_entry`: the user selected an entry but changed means, target, honesty, timing, or risk.
+- `freeform`: the user acted outside the entries.
+- `implicit_default`: the user gave no action and the Game Master advanced from state.
 
 ## Resolution
 
@@ -52,6 +61,8 @@ Resolve from these inputs, in order:
 The chosen event material is a seed, not the whole answer. If no authored event fits, create a state-led ruling from the ledger and label script/content gaps during tests.
 
 When a turn is manually adjudicated, still write an event-shaped trace into the ledger. Use an id such as `manual_preschool_self_management` or `manual_ethics_meeting`, add it to `event_history`, and include a matching `timeline` item.
+
+When authored and manual material both matter, keep both visible. A composite turn can list multiple event IDs, for example `["exam_crossroads", "manual_family_confession"]` in `event_history` and `"exam_crossroads + manual_family_confession"` in the timeline item's `event_id`.
 
 ## Delta
 
@@ -113,6 +124,7 @@ Avoid four cosmetic variants of the same plan. Each entry should imply a differe
 Before sending the turn:
 
 - Did the user's free-form intent survive, or was it collapsed into the nearest listed option?
+- Did the intent `source` match how the user acted?
 - Did every durable story fact land in attributes, relationships, flags, clocks, threads, timeline, terminal state, or realm?
 - Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?

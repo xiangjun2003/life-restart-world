@@ -4,7 +4,7 @@
   "title": "Classic Lite Life Restart World",
   "license": "Original seed content for this skill. Inspired by life-restart mechanics; not copied from upstream event prose.",
   "compatible_realms": ["human_world", "higher_realm"],
-  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "cultivation"],
+  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "admission", "scholarship", "cultivation"],
   "attributes": {
     "CHR": "presence, charm, appearance",
     "INT": "learning and reasoning",
@@ -268,6 +268,32 @@
       "choices": ["Use the lab time carefully", "Ask for harder computer books", "Trade chores for more access"]
     },
     {
+      "id": "lab_chore_routine",
+      "title": "机房杂活",
+      "age_range": [13, 18],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[authorized_lab_time]",
+      "tags": ["education", "technology", "mentor", "work"],
+      "effects": {"INT": 1, "WIL": 1, "SPR": -1},
+      "set_flags": ["lab_chore_routine"],
+      "open_threads": ["computer_practice_routine"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "allows extra edge time because the chores are done reliably"}
+      },
+      "evidence": {
+        "lab_permission": {
+          "claim": "Supervised computer-room edge time is allowed in exchange for routine chores.",
+          "status": "witnessed_permission",
+          "holders": ["self", "mentor_teacher"],
+          "risk": "low"
+        }
+      },
+      "narrative_seed": "Extra access is not granted dramatically; it is earned through chalk dust, keys, and staying after everyone leaves.",
+      "choices": ["Keep the routine sustainable", "Ask for a harder technical task", "Protect exam time from the routine"]
+    },
+    {
       "id": "secret_part_time",
       "title": "偷偷打工",
       "age_range": [14, 22],
@@ -305,6 +331,55 @@
       "choices": ["Tell a partial truth", "Double down on secrecy", "Ask a teacher to mediate"]
     },
     {
+      "id": "family_budget_conversation",
+      "title": "家里的账本",
+      "age_range": [14, 18],
+      "realm": "human_world",
+      "weight": 7,
+      "repeatable": false,
+      "include": "flags?[family_suspects_secret_work]|flags?[secret_part_time_job]",
+      "tags": ["family", "money", "honesty", "relationship"],
+      "effects": {"SPR": 1, "WIL": 1},
+      "set_flags": ["family_budget_conversation"],
+      "clear_flags": ["family_suspects_secret_work"],
+      "open_threads": ["family_budget_contract"],
+      "relationships": {
+        "family": {"delta": 1, "note": "still worried, but now understands part of the plan"}
+      },
+      "pressure_clocks": {
+        "secrecy_risk": {"delta": -2, "limit": 4, "meaning": "秘密行动被发现的风险"},
+        "family_debt": {"delta": 1, "limit": 5, "meaning": "家里经济余地变窄"}
+      },
+      "narrative_seed": "A half-truth becomes a family budget conversation: not full peace, but a shared ledger replaces pure suspicion.",
+      "choices": ["Follow the agreed budget", "Ask for one study expense", "Repair trust before asking more"]
+    },
+    {
+      "id": "computer_shop_barter",
+      "title": "电脑店打杂",
+      "age_range": [14, 18],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[authorized_lab_time]|flags?[secret_part_time_job]|flags?[computer_access]",
+      "tags": ["technology", "work", "money", "relationship"],
+      "effects": {"INT": 1, "WIL": 1, "SPR": -1},
+      "set_flags": ["computer_shop_barter"],
+      "open_threads": ["computer_shop_access", "money_vs_study"],
+      "relationships": {
+        "shop_owner": {"delta": 1, "note": "offers small repair chores and occasional machine access"}
+      },
+      "evidence": {
+        "shop_access_promise": {
+          "claim": "The shop owner may trade repair chores for limited computer access.",
+          "status": "informal_promise",
+          "holders": ["self", "shop_owner"],
+          "risk": "medium"
+        }
+      },
+      "narrative_seed": "A repair counter becomes a second classroom, paid for with errands, dust, and care around adult expectations.",
+      "choices": ["Keep the shop tie modest", "Push for more machine time", "Tell family before it looks like secrecy"]
+    },
+    {
       "id": "used_computer_opportunity",
       "title": "二手电脑机会",
       "age_range": [14, 22],
@@ -319,6 +394,28 @@
       "open_threads": ["computer_path"],
       "narrative_seed": "A used machine or shared computer becomes possible, but the price is not only money.",
       "choices": ["Spend the saved money", "Ask for help openly", "Wait and keep practicing elsewhere"]
+    },
+    {
+      "id": "family_computer_schedule_contract",
+      "title": "家里的用机约定",
+      "age_range": [15, 19],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[used_computer_opportunity]",
+      "tags": ["technology", "family", "discipline", "relationship"],
+      "effects": {"SPR": 1, "WIL": 1},
+      "set_flags": ["computer_schedule_contract"],
+      "close_threads": ["computer_shop_access"],
+      "open_threads": ["computer_path"],
+      "relationships": {
+        "family": {"delta": 1, "note": "accepts computer use as long as study and rest stay visible"}
+      },
+      "pressure_clocks": {
+        "secrecy_risk": {"close": true}
+      },
+      "narrative_seed": "The machine stops being a secret object and becomes a negotiated household risk.",
+      "choices": ["Honor the schedule", "Use late-night time and risk trust", "Show family a useful result"]
     },
     {
       "id": "exam_crossroads",
@@ -337,6 +434,37 @@
       },
       "narrative_seed": "Exams turn private talent into public pressure.",
       "choices": ["Bet everything on school", "Balance study and earning money", "Choose a practical trade"]
+    },
+    {
+      "id": "admission_notice_transition",
+      "title": "录取通知",
+      "age_range": [17, 20],
+      "realm": "human_world",
+      "weight": 8,
+      "repeatable": false,
+      "include": "EVT?[exam_crossroads]&INT>=7",
+      "tags": ["education", "admission", "scholarship", "family", "city"],
+      "effects": {"INT": 1, "SPR": 1, "MNY": -1},
+      "set_flags": ["admission_notice", "funded_city_study_track"],
+      "close_threads": ["exam_path", "leave_or_stay"],
+      "open_threads": ["city_life", "family_promise", "computer_path"],
+      "relationships": {
+        "family": {"delta": 1, "note": "turns worry into a promise about study, money, and returning home"},
+        "mentor_teacher": {"delta": 1, "note": "helps interpret the notice and funding path"}
+      },
+      "pressure_clocks": {
+        "exam_deadline": {"close": true}
+      },
+      "evidence": {
+        "admission_notice": {
+          "claim": "A city school or funded study track is now available after the exam.",
+          "status": "official_notice",
+          "holders": ["self", "family", "mentor_teacher"],
+          "risk": "low"
+        }
+      },
+      "narrative_seed": "The notice does not erase poverty; it turns it into a new route with signatures, promises, and a train ticket.",
+      "choices": ["Accept the funded city path", "Choose a local practical path", "Negotiate a family support promise"]
     },
     {
       "id": "city_arrival",
@@ -497,8 +625,9 @@
     "0": [{"event_id": "birth_county", "weight": 20}],
     "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
     "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}],
-    "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}],
+    "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "family_budget_conversation", "weight": 7}, {"event_id": "computer_shop_barter", "weight": 5}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "family_computer_schedule_contract", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
+    "17-20": [{"event_id": "admission_notice_transition", "weight": 8}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],
     "24-40": [{"event_id": "small_success", "weight": 9}],
     "28-55": [{"event_id": "relationship_reckoning", "weight": 8}],

@@ -45,6 +45,14 @@ Use short needle tests when checking a specific rule or script behavior.
 
 For longer tests, ask the tester to strictly use the skill, read only the references needed for play, and stop at a named phase endpoint. The endpoint should be part of the prompt so the transcript shows whether pacing stayed playable.
 
+For skill iteration after a hosting-rule change, prefer a 3-agent full-flow set:
+
+- classic-lite phase run: later-age start or ordinary life phase, 10-14 playable turns, content pack used only where it fits.
+- custom world run: no matching content pack, 10-14 playable turns, session world note plus state ledger hosting.
+- ledger stress run: same-age or same-week dense arc, 8-12 playable turns, at least one mid-run and one final validation.
+
+Each tester should strictly call this skill, preserve the full transcript, record event IDs or `manual_*` rulings, and report whether the action entries felt like affordances rather than a locked menu.
+
 ## Good Failure Reports
 
 Prefer:

@@ -50,7 +50,7 @@ Load only what is needed:
 3. Resolve each turn in this order.
    - Interpret the user's natural-language action into an intent object.
    - Consult relevant event packs and open threads when they fit the world.
-   - Adjudicate what happens from state, user intent, genre, and any matching event material.
+   - Adjudicate what happens from state, user intent, genre, and any matching event material. If the user acts outside the listed entries, treat that action as first-class play, not as a fallback or error.
    - Apply effects to the state ledger using the turn state contract.
    - Render a complete story scene from the rule result.
    - Present state deltas and 2-4 action entries, while allowing free-form action.
@@ -94,7 +94,7 @@ For each playable turn, respond in this order:
 3. Current state snapshot.
 4. Action entries:
    - Include 2-4 plausible action entries.
-   - Make them affordances, not hard limits.
+   - Make them affordances, not hard limits. Each entry should imply a different method, cost, ally, risk, or future thread.
    - End with a reminder that the user can answer freely.
 
 Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.
