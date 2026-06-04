@@ -1,6 +1,6 @@
 # World Model
 
-The simulator is narrative-first but stateful. Every turn must preserve a structured ledger.
+The simulator is narrative-first but stateful. Every turn must preserve a structured ledger. The ledger is the minimum viable engine: if helper scripts or event packs are unavailable or unsuitable, continue by maintaining this state directly.
 
 ## Canonical State
 
@@ -81,3 +81,20 @@ Age increments are not rigid. A turn is a meaningful life beat. Youth usually mo
 - Put recurring people in `relationships` with a score from `-5` to `5` and a short note when helpful.
 - Put all triggered event IDs in `event_history`.
 - Put each turn's story summary in `timeline`.
+
+## Prologue State
+
+For later-age starts, include a short prologue in `timeline` and derive state from it. Do not start at a later age with an empty history unless the premise explicitly involves amnesia, artificial creation, or missing records.
+
+Example prologue timeline item:
+
+```json
+{
+  "turn": "prologue",
+  "age": 7,
+  "event_id": "teacher_notice",
+  "summary": "A teacher noticed the child's unusual reading speed and lent old exam papers.",
+  "effects": {"INT": 1, "relationship:teacher": 2},
+  "flags": ["teacher_noticed"]
+}
+```

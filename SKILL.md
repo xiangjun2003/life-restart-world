@@ -7,7 +7,9 @@ description: Run and help build natural-language Life Restart style life simulat
 
 ## Purpose
 
-Use this skill to host a narrative-first, rules-constrained life simulation. The user can start a custom life in natural language, make free-form choices, and watch a structured fate engine update attributes, relationships, flags, event history, and endings.
+Use this skill to host a narrative-first, stateful life simulation. The user can start a custom life in natural language, make free-form choices, and watch the Game Master maintain a structured state ledger for attributes, relationships, flags, event history, open threads, and endings.
+
+The core play object is the state ledger, not the helper script. Treat event packs and scripts as references or adjudication aids. Do not force a custom world through a mismatched event pack.
 
 The upstream project `VickScarlet/lifeRestart` is MIT licensed. If you reuse upstream code, data, event text, or converted content, preserve the license in `references/lifeRestart-LICENSE.md` and cite the upstream repository.
 
@@ -15,7 +17,7 @@ The upstream project `VickScarlet/lifeRestart` is MIT licensed. If you reuse ups
 
 Default to instruction-only hosting. Do not require network access, package installation, or third-party Python modules.
 
-Optional helper scripts in `scripts/` use only Python 3 standard library. If Python is unavailable, host the game manually using the same state and event protocol from the reference files.
+Optional helper scripts in `scripts/` use only Python 3 standard library. Use them for inspection, deterministic spot checks, or importing upstream data. They are not required for hosting and should not override good Game Master judgment.
 
 ## Reference Map
 
@@ -26,6 +28,7 @@ Load only what is needed:
 - `references/content-pack-schema.md`: JSON schema for events, talents, choices, effects, and conditions.
 - `references/upstream-mapping.md`: how the original Life Restart modules and XLSX sheets map into this skill.
 - `references/safety-boundaries.md`: safety rules for fictional death, reincarnation, minors, self-harm, and high-risk content.
+- `references/playtest-protocol.md`: no-fallback testing rules and how to report exposed problems.
 - `references/content-packs/classic-lite.json`: small built-in offline seed pack.
 
 ## Hosting Workflow
@@ -37,14 +40,13 @@ Load only what is needed:
 
 2. Create the initial state ledger.
    - Include `age`, `life_cap`, `existence_state`, `realm`, attributes, talents, relationships, flags, event history, open threads, and terminal status.
+   - If the user requests a later starting age or situation, generate a compressed prologue first, then begin interactive play at that age with a causally grounded state.
    - Give the user a short character card before the first turn.
 
 3. Resolve each turn in this order.
    - Interpret the user's natural-language action into an intent object.
-   - Collect candidate events from the active content pack, open threads, and the user's action.
-   - Filter by conditions and safety boundaries.
-   - Reweight candidates by relevance to the user's action.
-   - Pick or adjudicate one event.
+   - Consult relevant event packs and open threads when they fit the world.
+   - Adjudicate what happens from state, user intent, genre, and any matching event material.
    - Apply effects to the state ledger.
    - Render a complete story scene from the rule result.
    - Present state deltas and 2-4 action entries, while allowing free-form action.
@@ -61,7 +63,7 @@ Load only what is needed:
 
 ## Optional Script Use
 
-Use `scripts/simulate_life.py` when deterministic state stepping is useful:
+Use `scripts/simulate_life.py` when deterministic state stepping is useful, but do not treat it as the canonical game loop:
 
 ```bash
 python3 scripts/simulate_life.py new --world "1990s county realism" --seed 7
@@ -70,6 +72,8 @@ python3 scripts/simulate_life.py demo --seed 7 --turns 5
 ```
 
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
+
+When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior.
 
 ## Output Shape For Play
 
