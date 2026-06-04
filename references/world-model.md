@@ -186,6 +186,7 @@ A checkpoint is a compact export of the current ledger for save/resume and agent
 Good checkpoints preserve:
 
 - `session_id`, `turn`, `age`, `time`, `life_cap`, `realm`, `existence_state`, and terminal status,
+- `world` context, including `session_note` for custom or no-pack worlds,
 - current attributes and talents,
 - `attribute_notes` for any exceptional or clamped attributes,
 - active relationships or factions,
@@ -197,6 +198,8 @@ Good checkpoints preserve:
 They omit resolved clutter unless it is needed to understand a current relationship, flag, evidence item, or pressure clock. If the checkpoint is later resumed, rebuild the internal ledger from the checkpoint and continue; do not retcon recent timeline facts to fit a new random event.
 
 Compact checkpoint display is allowed, but resumed play must expand back to the full ledger shape. Avoid leaving clocks as strings like `"3/4"` or evidence as bare strings in the reconstructed state; use objects with stage/limit/meaning, status/claim, holders, and risk where relevant.
+
+Use `scripts/validate_checkpoint.py` for handoff capsules that are meant to be resumed by another agent. It checks the portable checkpoint shape; after resuming into a full ledger, use `scripts/validate_state.py`.
 
 ## Prologue State
 

@@ -240,6 +240,14 @@ Use a state checkpoint when the user asks to save, resume, continue in a new thr
 
 A checkpoint is a compact, copyable capsule, not a transcript and not a replacement for the internal ledger. It should contain enough to resume without replaying the whole life:
 
+For handoff or QA, run:
+
+```bash
+python3 scripts/validate_checkpoint.py checkpoint.json
+```
+
+Treat checkpoint validation errors as handoff blockers. Warnings usually mean the capsule can still be resumed by a careful agent, but the next agent may need to repair clutter, missing custody, or stale phase threads.
+
 ```json
 {
   "kind": "life_restart_world_checkpoint",
@@ -253,6 +261,17 @@ A checkpoint is a compact, copyable capsule, not a transcript and not a replacem
   "existence_state": "mortal",
   "terminal": false,
   "terminal_reason": null,
+  "world": {
+    "style": "realistic",
+    "premise": "1990s county realism with rare legendary branches",
+    "content_pack": "classic-lite",
+    "session_note": {
+      "tone": "grounded",
+      "state_axes": ["exam_path", "computer_path", "family_pressure"],
+      "factions": {"family": "cash-strapped but protective", "school": "limited resources and one trusted teacher"},
+      "pressure_clocks": {}
+    }
+  },
   "attributes": {"CHR": 5, "INT": 9, "STR": 4, "MNY": 3, "SPR": 4, "LUK": 5, "WIL": 8},
   "attribute_notes": {},
   "talents": ["early_reader", "stubborn_heart"],
@@ -287,6 +306,7 @@ When resuming from a checkpoint:
 - Treat the checkpoint as the current ledger seed, not as flavor text.
 - Expand compact checkpoint fields back into ledger-shaped objects before play continues. For example, pressure clocks need `stage`, `limit`, and `meaning`; evidence needs `claim` or `status` plus `holders` when custody matters.
 - Do not restart from birth or re-roll talents unless the checkpoint says the life restarted.
+- Preserve world context. For custom or no-pack worlds, the checkpoint should include enough `world.session_note` to keep tone, factions, state axes, and active pressure interpretation stable.
 - Preserve age, time, relationships, clocks, evidence, flags, open threads, terminal status, and recent timeline facts.
 - Preserve phase summaries so old arcs do not need to be replayed.
 - Preserve `attribute_notes` when an attribute is outside the ordinary range or future deltas have been clamped.

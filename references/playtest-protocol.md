@@ -35,6 +35,7 @@ For each playtest, record:
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
+- For save/resume tests, record `scripts/validate_checkpoint.py` output before reconstructing the full ledger, then record `scripts/validate_state.py` output after resuming.
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
 - When editing, importing, or selecting a content pack for script-assisted tests, record `scripts/validate_content_pack.py` output before play begins.
 - For custom or no-pack worlds, record whether `world.session_note` exists and whether active pressure clocks are mirrored in the top-level state ledger.

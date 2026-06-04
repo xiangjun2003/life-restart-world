@@ -77,12 +77,15 @@ python3 scripts/simulate_life.py turn --state state.json --action "I study hard 
 python3 scripts/simulate_life.py turn --state state.json --intent intent.json --strict
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
+python3 scripts/validate_checkpoint.py checkpoint.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
 Do not use `simulate_life.py` as a later-age prologue generator or same-age micro-turn engine. For starts such as "20 岁大二" or dense arcs such as an investigation, manually create and update the state ledger, then use `scripts/validate_state.py` to check structure. If you probe the content pack during such tests, report strict mismatches instead of converting them into generated fallback events.
 
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
+
+Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed to another agent or resumed after a context break. It checks that compact checkpoint fields are expanded enough to reconstruct the state ledger.
 
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
 
