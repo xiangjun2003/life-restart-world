@@ -217,6 +217,8 @@ The label is what a player can read; the other fields help the next agent preser
 
 For live-turn QA, `next_affordances` can also appear as an optional current-board field on the full state ledger. It is not protagonist history; replace it each turn or omit it outside debug, playtest, and handoff contexts.
 
+`last_intent` is also optional and current-turn scoped. It stores the latest parsed user action for QA or handoff, especially `source`, `selected_entry`, `modifiers`, `raw_action`, tags, targets, risk, and desired outcome. It should not replace `timeline`, `event_history`, or durable state changes.
+
 If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
 
 If a live clock appears in both `world.session_note.pressure_clocks` and top-level `pressure_clocks`, keep `stage` and `limit` synchronized. The top-level ledger is authoritative; the session note is context, not a second counter.

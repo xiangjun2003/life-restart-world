@@ -48,6 +48,8 @@ Use `source` to avoid accidentally turning free play into menu play:
 - `freeform`: the user acted outside the entries.
 - `implicit_default`: the user gave no action and the Game Master advanced from state.
 
+During playtests, debug output, or handoff, you may store the resolved intent as optional `last_intent` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to prove that a `modified_entry` kept the user's modifiers and that a `freeform` action was not squeezed into a nearby menu entry.
+
 ## Resolution
 
 Resolve from these inputs, in order:

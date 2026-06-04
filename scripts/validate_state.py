@@ -40,6 +40,8 @@ ATTRIBUTES = ["CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL"]
 LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 AFFORDANCE_RISKS = {"low", "medium", "high", "critical"}
+INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
+INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
@@ -339,6 +341,43 @@ def check_next_affordances(value: Any, known_hooks: set[str], errors: list[str],
         warnings.append("next_affordances do not expose at least two distinct state hook or target sets; avoid cosmetic variants")
 
 
+def check_intent_list_field(intent: dict[str, Any], key: str, errors: list[str], warnings: list[str]) -> None:
+    if key in intent:
+        check_string_list_value(intent[key], f"last_intent.{key}", errors, warnings)
+
+
+def check_last_intent(value: Any, errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, dict):
+        errors.append("last_intent must be an object when present")
+        return
+    summary = value.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        errors.append("last_intent.summary must be a nonempty string")
+    source = value.get("source")
+    if source not in INTENT_SOURCES:
+        errors.append(f"last_intent.source must be one of {sorted(INTENT_SOURCES)}")
+        return
+    if "selected_entry" in value and not is_int_like(value["selected_entry"]):
+        errors.append("last_intent.selected_entry must be numeric when present")
+    if source in {"entry", "modified_entry"} and "selected_entry" not in value:
+        warnings.append(f"last_intent.source={source} should include selected_entry")
+    if source == "modified_entry" and not value.get("modifiers"):
+        warnings.append("last_intent.source=modified_entry should include modifiers so the user change is preserved")
+    if source == "freeform" and "selected_entry" in value:
+        warnings.append("last_intent.source=freeform should not keep selected_entry; do not squeeze free action into a menu entry")
+    if source == "freeform" and not (value.get("raw_action") or value.get("user_action")):
+        warnings.append("last_intent.source=freeform should include raw_action or user_action for audit")
+    if source == "implicit_default" and value.get("raw_action"):
+        warnings.append("last_intent.source=implicit_default should not include raw_action")
+    for key in ["modifiers", "targets", "tags", "checks"]:
+        check_intent_list_field(value, key, errors, warnings)
+    if value.get("risk") and str(value["risk"]) not in INTENT_RISKS:
+        warnings.append(f"last_intent.risk is unusual: {value['risk']}")
+    for key in ["raw_action", "user_action", "desired_outcome"]:
+        if key in value and not isinstance(value[key], str):
+            errors.append(f"last_intent.{key} must be a string when present")
+
+
 def check_phase_summary_consistency(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     phase_summaries = state.get("phase_summaries")
     if not isinstance(phase_summaries, list):
@@ -586,6 +625,8 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
     check_optional_extensions(state, errors, warnings)
     if "next_affordances" in state:
         check_next_affordances(state["next_affordances"], collect_known_hooks(state), errors, warnings)
+    if "last_intent" in state:
+        check_last_intent(state["last_intent"], errors, warnings)
     check_phase_summary_consistency(state, errors, warnings)
     check_timeline_and_history(state, errors, warnings)
     check_ledger_density(state, warnings)
