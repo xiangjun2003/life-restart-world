@@ -229,6 +229,19 @@ For live-turn QA, `next_affordances` can also appear as an optional current-boar
 
 `last_delta` is optional and current-turn scoped. It stores what the latest turn claims to have changed, so validation can check that those event IDs, flags, threads, evidence, clocks, relationships, and phase summaries are visible in the actual ledger. It is an audit trace, not a second source of truth. Passing validation proves the named consequences were recorded; it does not prove the fiction, evidence claim, or clock movement was semantically wise.
 
+For `freeform` or `modified_entry` QA, `last_delta.intent_trace` can prove that the user's custom action survived adjudication:
+
+```json
+{
+  "source": "modified_entry",
+  "preserved": ["ask the teacher but hide the part-time job from family"],
+  "state_hooks": ["mentor_teacher", "secrecy_risk"],
+  "outcome": "teacher trust rose while secrecy pressure stayed active"
+}
+```
+
+Keep `intent_trace` small and current-turn scoped. It should point to existing or newly changed ledger hooks, not replace the story or the actual state delta.
+
 If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
 
 If a live clock appears in both `world.session_note.pressure_clocks` and top-level `pressure_clocks`, keep `stage` and `limit` synchronized. The top-level ledger is authoritative; the session note is context, not a second counter.

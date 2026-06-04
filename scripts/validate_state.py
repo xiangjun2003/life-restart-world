@@ -41,6 +41,7 @@ LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 AFFORDANCE_RISKS = {"low", "medium", "high", "critical"}
 INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
+CUSTOM_INTENT_SOURCES = {"modified_entry", "freeform"}
 INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed", "archived", "inactive"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
@@ -447,6 +448,65 @@ def check_last_intent(value: Any, errors: list[str], warnings: list[str]) -> Non
     for key in ["raw_action", "user_action", "desired_outcome"]:
         if key in value and not isinstance(value[key], str):
             errors.append(f"last_intent.{key} must be a string when present")
+
+
+def collect_delta_hooks(delta: dict[str, Any]) -> set[str]:
+    hooks: set[str] = set()
+    attrs = delta.get("attributes")
+    if isinstance(attrs, dict):
+        hooks.update(str(item) for item in attrs)
+    for key in ["relationships", "pressure_clocks", "evidence"]:
+        value = delta.get(key)
+        if isinstance(value, dict):
+            hooks.update(str(item) for item in value)
+    for key in ["flags_added", "flags_removed", "threads_added", "threads_closed", "event_material", "event_ids"]:
+        value = delta.get(key)
+        if isinstance(value, list):
+            hooks.update(str(item) for item in value if isinstance(item, str))
+    phase_summary = delta.get("phase_summary")
+    if isinstance(phase_summary, str):
+        hooks.add(phase_summary)
+    elif isinstance(phase_summary, dict) and phase_summary.get("id"):
+        hooks.add(str(phase_summary["id"]))
+    return hooks
+
+
+def check_intent_trace(delta: Any, intent: Any, known_hooks: set[str], errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(delta, dict) or not isinstance(intent, dict):
+        return
+    source = intent.get("source")
+    trace = delta.get("intent_trace")
+    if source in CUSTOM_INTENT_SOURCES and trace is None:
+        warnings.append(f"last_delta.intent_trace is missing; {source} turns should show which custom intent parts reached state")
+        return
+    if trace is None:
+        return
+    if not isinstance(trace, dict):
+        errors.append("last_delta.intent_trace must be an object when present")
+        return
+    trace_source = trace.get("source")
+    if trace_source is not None and trace_source != source:
+        warnings.append(f"last_delta.intent_trace.source={trace_source} does not match last_intent.source={source}")
+    for key in ["preserved", "state_hooks"]:
+        if key in trace:
+            check_string_list_value(trace[key], f"last_delta.intent_trace.{key}", errors, warnings)
+    if source == "modified_entry" and intent.get("modifiers") and not trace.get("preserved"):
+        warnings.append("last_delta.intent_trace.preserved should name the user modifiers that survived resolution")
+    if source == "freeform" and not trace.get("preserved"):
+        warnings.append("last_delta.intent_trace.preserved should name the free-form action that was adjudicated")
+    state_hooks = trace.get("state_hooks")
+    if not state_hooks:
+        warnings.append("last_delta.intent_trace.state_hooks is missing or empty; custom actions should point at ledger hooks")
+    elif isinstance(state_hooks, list):
+        valid_hooks = known_hooks | collect_delta_hooks(delta)
+        unknown_hooks = [str(hook) for hook in state_hooks if str(hook) not in valid_hooks]
+        if unknown_hooks:
+            warnings.append(f"last_delta.intent_trace.state_hooks do not reference known or changed ledger hooks: {unknown_hooks}")
+    if not trace.get("outcome") and not trace.get("adjudication") and not trace.get("preserved"):
+        warnings.append("last_delta.intent_trace should include preserved, outcome, or adjudication")
+    for key in ["outcome", "adjudication", "notes"]:
+        if key in trace and not isinstance(trace[key], str):
+            errors.append(f"last_delta.intent_trace.{key} must be a string when present")
 
 
 def phase_thread_refs(state: dict[str, Any], key: str) -> set[str]:
@@ -910,6 +970,8 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
         check_last_intent(state["last_intent"], errors, warnings)
     if "last_delta" in state:
         check_last_delta(state["last_delta"], state, errors, warnings)
+    if "last_intent" in state and "last_delta" in state:
+        check_intent_trace(state["last_delta"], state["last_intent"], collect_known_hooks(state), errors, warnings)
     check_phase_summary_consistency(state, errors, warnings)
     check_timeline_and_history(state, errors, warnings)
     check_ledger_density(state, warnings)

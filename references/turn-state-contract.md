@@ -98,6 +98,21 @@ Prefer small deltas. A vivid scene does not need many flags, but any fact that c
 
 During playtests, debug output, or handoff, you may store the latest durable change set as optional `last_delta` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to check that event IDs, flags, threads, evidence, clocks, relationships, and phase summaries named by the turn actually landed in the current ledger. If `last_delta` resolves, closes, archives, or spends evidence/clocks, those items should leave the active board but still be named in structured archive fields such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence` on `phase_summaries` or timeline items. Loose mentions in prose are useful for humans, but structured fields make handoff validation reliable.
 
+For `freeform` or `modified_entry` turns in playtests or handoff, add a compact `intent_trace` inside `last_delta`:
+
+```json
+{
+  "intent_trace": {
+    "source": "freeform",
+    "preserved": ["cross-check contract signatures at the print shop instead of using the official desk"],
+    "state_hooks": ["contract_signature_gap", "retaliation_risk"],
+    "outcome": "created evidence and advanced retaliation pressure"
+  }
+}
+```
+
+This is not a second state object. It is proof that the user's custom action survived resolution and touched real ledger hooks.
+
 As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
 
 Keep relationship scores within `-5..5`. Do not keep every named person or faction active forever; archive inactive contacts into `phase_summaries`, relationship notes, evidence holders, or timeline summaries so the current relationship board stays playable.
@@ -164,6 +179,7 @@ Before sending the turn:
 
 - Did the user's free-form intent survive, or was it collapsed into the nearest listed option?
 - Did the intent `source` match how the user acted?
+- For a `freeform` or `modified_entry` playtest turn, did `last_delta.intent_trace` name what was preserved and which ledger hooks changed?
 - Did every durable story fact land in attributes, relationships, flags, clocks, threads, timeline, terminal state, or realm?
 - Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?

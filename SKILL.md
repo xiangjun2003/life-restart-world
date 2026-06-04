@@ -91,7 +91,7 @@ Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<loc
 
 Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed to another agent or resumed after a context break. It checks that compact checkpoint fields are expanded enough to reconstruct the state ledger.
 
-When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; do not expose the structured objects to the player unless they ask for raw state.
+When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; for `freeform` or `modified_entry`, `last_delta.intent_trace` should show which custom action parts reached ledger hooks. Do not expose the structured objects to the player unless they ask for raw state.
 
 For strict QA or CI, add `--fail-on-warnings` to `validate_state.py` or `validate_checkpoint.py` so lifecycle drift, stale hooks, or clutter warnings fail the command instead of only appearing in JSON.
 
