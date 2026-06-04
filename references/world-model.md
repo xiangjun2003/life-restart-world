@@ -126,6 +126,8 @@ For `standard` pace, a useful default is:
 - If many turns share the same `age`, add `time` so the order stays playable.
 - Close stale `open_threads` when a later event resolves or supersedes them; the snapshot should show the current board, not every idea that ever appeared.
 
+The current board should stay small enough to scan. As a rule of thumb, keep no more than about 2-5 active relationships, 2-5 open threads or clocks, and only evidence that can affect the next few turns. Archive inactive contacts, resolved evidence, filled clocks, old promises, and completed arcs into relationship notes, flags, timeline, or `phase_summaries`. This is about the visible/current board, not erasing protagonist history.
+
 Phase summaries are compact records of completed life segments:
 
 ```json

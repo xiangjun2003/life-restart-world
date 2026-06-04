@@ -115,6 +115,8 @@ After applying the delta, show a compact snapshot:
 
 Do not print the full JSON ledger unless the user asks for debug/raw state.
 
+If the internal ledger has many active items, prune the current board before showing it. Archive resolved or inactive relationships, evidence, clocks, and threads into `phase_summaries`, timeline, flags, or relationship notes. Keep only items that can plausibly change the next decision.
+
 For save/resume or agent handoff, provide a checkpoint capsule instead of the full ledger. The checkpoint should preserve the current playable state: session id, turn, age/time, realm/existence state, attributes, talents, active relationships, clocks, evidence, flags, open threads, recent timeline, and next affordances. Keep older resolved history summarized unless it still affects play.
 
 When resuming, expand compact checkpoint notation into full ledger objects before validating or resolving the next turn. Do not leave active clocks as `"3/4"` strings or evidence as bare labels in the reconstructed state.

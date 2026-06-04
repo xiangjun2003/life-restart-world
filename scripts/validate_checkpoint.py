@@ -264,6 +264,8 @@ def check_pressure_clocks(value: Any, errors: list[str], warnings: list[str]) ->
     if not isinstance(value, dict):
         errors.append("pressure_clocks must be an object")
         return
+    if len(value) > 5:
+        warnings.append(f"pressure_clocks has more than 5 active items ({len(value)}); resolve, archive, or summarize stale clocks before handoff")
     for clock_id, clock in value.items():
         path = f"pressure_clocks.{clock_id}"
         if not isinstance(clock, dict):
@@ -291,6 +293,8 @@ def check_evidence(value: Any, errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, dict):
         errors.append("evidence must be an object")
         return
+    if len(value) > 8:
+        warnings.append(f"evidence has more than 8 active items ({len(value)}); archive stale evidence before handoff")
     for evidence_id, item in value.items():
         path = f"evidence.{evidence_id}"
         if not isinstance(item, dict):
@@ -358,6 +362,14 @@ def check_recent_timeline(value: Any, errors: list[str], warnings: list[str]) ->
                 warnings.append(f"recent_timeline[{index}] should include summary, title, or action")
         else:
             errors.append(f"recent_timeline[{index}] must be a string or object")
+
+
+def check_checkpoint_density(checkpoint: dict[str, Any], warnings: list[str]) -> None:
+    open_threads = checkpoint.get("open_threads")
+    if isinstance(open_threads, list) and len(open_threads) > 8:
+        warnings.append(f"open_threads has more than 8 items ({len(open_threads)}); close stale threads or summarize them before handoff")
+    if checkpoint.get("terminal") is True and isinstance(open_threads, list) and len(open_threads) > 3:
+        warnings.append(f"terminal checkpoint still has many open_threads ({len(open_threads)}); close or summarize resolved threads")
 
 
 def affordance_label(item: Any) -> str:
@@ -623,6 +635,7 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     check_evidence(checkpoint.get("evidence"), errors, warnings)
     check_phase_summaries(checkpoint.get("phase_summaries"), checkpoint.get("open_threads"), errors, warnings)
     check_recent_timeline(checkpoint.get("recent_timeline"), errors, warnings)
+    check_checkpoint_density(checkpoint, warnings)
     check_next_affordances(checkpoint.get("next_affordances"), collect_known_hooks(checkpoint), errors, warnings)
     if "last_intent" in checkpoint:
         check_last_intent(checkpoint["last_intent"], errors, warnings)

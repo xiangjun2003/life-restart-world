@@ -38,7 +38,8 @@ Load only what is needed:
 
 1. Establish play mode.
    - If the user gave enough detail, infer the mode and begin with a first playable response.
-   - Otherwise ask a compact opening prompt: world style, randomness level, and pace. Ask only for missing essentials, not for a full form.
+   - If the user only says "来一局", "开始", "随机", or equivalent, treat that as enough detail: start a default semi-random standard-pace life and mention they can change style before the first action.
+   - Ask a compact opening prompt only when the user clearly wants to choose setup before play. Ask only for missing essentials, not for a full form.
    - Default to `narrative-first`, `semi-random`, `standard` pace.
    - For custom worlds, draft a short session world note before resolving turns. This is a consistency aid, not a content-pack requirement.
 
@@ -60,6 +61,7 @@ Load only what is needed:
    - Do not erase previous timeline facts unless an explicit supernatural or memory-altering event establishes it.
    - If a user proposes an implausible action, convert it into an attempt with cost, risk, and a check rather than refusing by default.
    - At natural phase endpoints, close or summarize stale threads into a phase summary so the current board stays playable.
+   - Keep the visible board small: preserve history in timeline and phase summaries, but keep only active relationships, clocks, evidence, and threads in the current snapshot.
    - When the user asks to save, resume, hand off to another agent, or continue after a long arc, create or consume a compact state checkpoint. Keep ordinary turns light unless a checkpoint is useful.
 
 5. End or transcend the life.

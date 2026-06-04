@@ -36,6 +36,7 @@ For each playtest, record:
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON. For live-turn QA, include optional structured `next_affordances`, `last_intent`, and `last_delta` in at least one mid-run state.
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
+- Whether the current board stays scannable: only active relationships, clocks, evidence, and threads remain visible; old material moves into phase summaries, flags, notes, or timeline.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - For save/resume tests, record `scripts/validate_checkpoint.py` output before reconstructing the full ledger, then record `scripts/validate_state.py` output after resuming.
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.

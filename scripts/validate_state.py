@@ -740,6 +740,12 @@ def check_ledger_density(state: dict[str, Any], warnings: list[str]) -> None:
     relationships = state.get("relationships")
     if isinstance(relationships, dict) and len(relationships) > 8:
         warnings.append(f"relationships has more than 8 entries ({len(relationships)}): {sorted(relationships)}; keep only active relationships in the snapshot")
+    pressure_clocks = state.get("pressure_clocks")
+    if isinstance(pressure_clocks, dict) and len(pressure_clocks) > 5:
+        warnings.append(f"pressure_clocks has more than 5 active items ({len(pressure_clocks)}): {sorted(pressure_clocks)}; resolve, archive, or summarize stale clocks")
+    evidence = state.get("evidence")
+    if isinstance(evidence, dict) and len(evidence) > 8:
+        warnings.append(f"evidence has more than 8 active items ({len(evidence)}): {sorted(evidence)}; archive stale evidence into phase_summaries, flags, or relationship notes")
     if state.get("terminal") is True and isinstance(open_threads, list) and len(open_threads) > 3:
         warnings.append(f"terminal state still has many open_threads ({len(open_threads)}): {open_threads}; close or summarize resolved threads")
 

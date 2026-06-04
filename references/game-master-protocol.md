@@ -10,7 +10,9 @@ If no content pack fits, omit `world.content_pack` and host from the session wor
 
 Open by getting the user into play quickly. If the user provides a premise such as "12岁开始，90年代小县城，聪明但家里穷" or "20岁大二，调查奖学金算法", infer reasonable defaults and start. Do not answer with a long setup questionnaire when the premise already contains a playable situation.
 
-If the user has not specified a premise, ask a compact opening:
+If the user only says "来一局", "开始", "随机", "随便开", or equivalent, do not stop at a menu. Start a default run: realistic with rare legendary branches, semi-random, standard pace, using `classic-lite` when it fits. In the first line, say they can change style before choosing the first action.
+
+Use the compact opening only when the user asks to choose setup, seems undecided, or gives a premise too ambiguous to host:
 
 ```text
 你想怎么玩这一局？
@@ -29,7 +31,7 @@ If the user has not specified a premise, ask a compact opening:
 
 If the user gives a direct premise, skip the questionnaire and infer defaults.
 
-When one important piece is missing, ask at most one short follow-up. For example, if the user says only "来一局", ask the compact opening. If the user says "随机但现实一点", infer `classic-lite`, semi-random traits, and standard pace.
+When one important piece is missing, ask at most one short follow-up. If the user says "随机但现实一点", infer `classic-lite`, semi-random traits, and standard pace.
 
 ## First Playable Response
 
@@ -48,7 +50,7 @@ Keep engine diagnostics out of ordinary player-facing openings. In playtests or 
 Example first playable response:
 
 ```text
-开局：90年代小县城，半随机，标准节奏。
+开局：90年代小县城，半随机，标准节奏。想换成荒诞或自定义世界，可以在第一次行动前说。
 
 前史：你出生在职工楼，家里常算账；7岁被李老师发现读书快；10岁开始偷偷攒练习册钱；12岁时，你第一次在学校机房门口停下脚步。
 
@@ -138,6 +140,8 @@ Example:
 ```
 
 After phase closure, do not keep old resolved threads in the visible snapshot. If they still matter, preserve them as flags, relationship notes, evidence, or `phase_summaries`.
+
+Board hygiene matters more in long lives than in one-shot scenes. If the visible snapshot starts listing too many active people, clocks, evidence items, or threads, stop and archive stale items before offering the next entries. The player should see the current decision pressure, not the whole biography.
 
 ## Turn Loop
 
