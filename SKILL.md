@@ -64,6 +64,7 @@ Load only what is needed:
 
 5. End or transcend the life.
    - Do not hard-cap life at 100 years. Use `life_cap`, `existence_state`, and terminal events.
+   - If age reaches or exceeds `life_cap` while play continues, the ledger must explain it: raise `life_cap`, change `existence_state`/`realm`, or record a terminal/transition event and phase summary.
    - Events such as resurrection, cultivation, immortality, ascension, or post-human transformation can extend or close the human-life arc.
    - At the end, summarize lifespan, identity arc, achievements, relationships, regrets, and any inherited talent or next-life hook.
 
@@ -88,6 +89,8 @@ Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<loc
 Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed to another agent or resumed after a context break. It checks that compact checkpoint fields are expanded enough to reconstruct the state ledger.
 
 When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; do not expose the structured objects to the player unless they ask for raw state.
+
+For strict QA or CI, add `--fail-on-warnings` to `validate_state.py` or `validate_checkpoint.py` so lifecycle drift, stale hooks, or clutter warnings fail the command instead of only appearing in JSON.
 
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
 

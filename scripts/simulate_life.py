@@ -605,6 +605,10 @@ def intent_aligned(event: dict[str, Any], intent: dict[str, Any]) -> bool:
     return bool(event_tags & action_tags)
 
 
+def aligned_intent_candidates(candidates: list[tuple[dict[str, Any], float]], intent: dict[str, Any]) -> list[tuple[dict[str, Any], float]]:
+    return [(event, weight) for event, weight in candidates if intent_aligned(event, intent)]
+
+
 def summarize_candidates(candidates: list[tuple[dict[str, Any], float]]) -> list[dict[str, Any]]:
     summary = []
     for event, weight in candidates[:8]:
@@ -962,8 +966,9 @@ def command_turn(args: argparse.Namespace) -> None:
     age_step = advance_age(state, rng)
     state["turn"] = int(state.get("turn", 0)) + 1
     candidates = collect_candidates(pack, state, intent)
+    weak_candidate_summaries = None
     if args.strict and intent.get("tags"):
-        aligned_candidates = [(event, weight) for event, weight in candidates if intent_aligned(event, intent)]
+        aligned_candidates = aligned_intent_candidates(candidates, intent)
         if candidates and not aligned_candidates:
             result = {
                 "error": "weak_intent_match",
@@ -982,6 +987,13 @@ def command_turn(args: argparse.Namespace) -> None:
             print(dump(result))
             raise SystemExit(3)
         candidates = aligned_candidates
+    elif intent.get("tags"):
+        aligned_candidates = aligned_intent_candidates(candidates, intent)
+        if aligned_candidates:
+            candidates = aligned_candidates
+        elif candidates:
+            weak_candidate_summaries = summarize_candidates(candidates)
+            candidates = []
     if not candidates and args.strict:
         result = {
             "error": "no_matching_event",
@@ -1021,6 +1033,10 @@ def command_turn(args: argparse.Namespace) -> None:
         "action_entries": default_choices(selected, state),
         "gm_instruction": "Use selected_event.narrative_seed and state_delta to write a complete story scene before showing choices.",
     }
+    if weak_candidate_summaries:
+        result["weak_intent_match"] = True
+        result["candidate_summaries"] = weak_candidate_summaries
+        result["gm_instruction"] = "The content pack had only weakly related age-valid events, so a session-generated event was used. Treat the pack mismatch as diagnostic and keep the state ledger canonical."
     if args.save:
         Path(args.save).write_text(dump(state) + "\n", encoding="utf-8")
     print(dump(result))

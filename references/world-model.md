@@ -88,6 +88,10 @@ Do not hard-cap lives at 100.
 
 Use `life_cap` as the current expected maximum, not as an absolute. Events may raise it, lower it, or end the arc before it is reached.
 
+When age reaches or passes `life_cap`, do not silently keep ordinary play moving. A mortal or resurrected life should either become terminal, receive a concrete life-extension event, or transform into another `existence_state`. A cultivator at the cap needs a breakthrough, failure, extension, or terminal consequence. For immortality, ascension, or post-human play, keep `life_cap` meaningful if aging still matters; otherwise use `time` and phase summaries to track eras, realms, or cycles.
+
+Any resurrection, ascension, immortality, or post-human transition should land in the ledger, not only in prose: update `existence_state`, `realm` when relevant, `life_cap` when aging still matters, `flags`, `timeline`, and usually a `phase_summaries` item that closes the prior human-life arc. Then offer new action entries for the next realm or ask whether the user wants a summary ending.
+
 ## Pace
 
 Default `standard` pace should produce about 25-45 meaningful turns.

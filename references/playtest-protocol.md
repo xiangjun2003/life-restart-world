@@ -65,6 +65,10 @@ Each tester should record event IDs or `manual_*` rulings, run `scripts/validate
 
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 
+For long-life or ascension tests, include at least one age-cap pressure point: ordinary death near `life_cap`, explicit life extension, resurrection, cultivation breakthrough, immortality, or ascension. The transcript should show whether `life_cap`, `existence_state`, `realm`, terminal status, timeline, and phase summaries stay coherent after the transition.
+
+Use `--fail-on-warnings` when the playtest goal is to expose lifecycle drift or handoff defects through command exit status, not only through the JSON warning list.
+
 ## Good Failure Reports
 
 Prefer:

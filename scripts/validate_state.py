@@ -46,6 +46,25 @@ PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
+KNOWN_EXISTENCE_STATES = {"mortal", "resurrected", "cultivator", "immortal", "ascended", "post_human"}
+MORTAL_LIKE_STATES = {"mortal", "resurrected"}
+TRANSCENDENT_REALM_HINTS = (
+    "upper_realm",
+    "higher_realm",
+    "cloud_realm",
+    "celestial",
+    "immortal",
+    "ascend",
+    "heaven",
+    "sky_registry",
+    "cultivation",
+    "xian",
+    "上界",
+    "天界",
+    "仙",
+    "灵界",
+    "飞升",
+)
 
 
 def has_attribute_note(state: dict[str, Any], attr: str) -> bool:
@@ -80,6 +99,11 @@ def is_int_like(value: Any) -> bool:
         return True
     except (TypeError, ValueError):
         return False
+
+
+def looks_transcendent_realm(value: Any) -> bool:
+    text = str(value or "").strip().lower()
+    return bool(text) and any(hint in text for hint in TRANSCENDENT_REALM_HINTS)
 
 
 def int_or_none(value: Any) -> int | None:
@@ -238,6 +262,27 @@ def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings
                         errors.append(f"phase_summaries[{index}].{key} must be a list when present")
 
 
+def check_lifespan_transition(state: dict[str, Any], warnings: list[str]) -> None:
+    existence_state = str(state.get("existence_state", "mortal"))
+    if existence_state and existence_state not in KNOWN_EXISTENCE_STATES:
+        warnings.append(f"existence_state is unusual: {existence_state}")
+    if existence_state in MORTAL_LIKE_STATES and state.get("terminal") is not True and looks_transcendent_realm(state.get("realm")):
+        warnings.append("realm looks transcendent while existence_state is mortal-like; confirm a mortal visitor premise or update existence_state")
+    if not is_int_like(state.get("age")) or not is_int_like(state.get("life_cap")):
+        return
+    if state.get("terminal") is True:
+        return
+
+    age = int(state["age"])
+    life_cap = int(state["life_cap"])
+    if age < life_cap:
+        return
+    if existence_state in MORTAL_LIKE_STATES:
+        warnings.append("age has reached or exceeded life_cap while terminal is false; mark an ending or record a concrete life extension/transformation")
+    elif existence_state == "cultivator":
+        warnings.append("cultivator age has reached or exceeded life_cap; extend life_cap, advance realm, or resolve the breakthrough/ending")
+
+
 def check_string_list_value(value: Any, path: str, errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, list):
         errors.append(f"{path} must be a list when present")
@@ -284,6 +329,11 @@ def collect_known_hooks(state: dict[str, Any]) -> set[str]:
                     for id_key in ["id", "name"]:
                         if item.get(id_key):
                             hooks.add(str(item[id_key]))
+    phase_summaries = state.get("phase_summaries")
+    if isinstance(phase_summaries, list):
+        for item in phase_summaries:
+            if isinstance(item, dict) and item.get("id"):
+                hooks.add(str(item["id"]))
     world = state.get("world")
     session_note = world.get("session_note") if isinstance(world, dict) else None
     if isinstance(session_note, dict):
@@ -712,6 +762,7 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
         errors.append("life_cap must be positive")
     if "terminal" in state and not isinstance(state.get("terminal"), bool):
         errors.append("terminal must be a boolean")
+    check_lifespan_transition(state, warnings)
 
     existence_state = str(state.get("existence_state", "mortal"))
     attrs = state.get("attributes")
@@ -754,20 +805,28 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) == 2 and argv[1] in {"-h", "--help"}:
-        print("Usage: validate_state.py STATE_JSON_PATH_OR_INLINE_OR_-")
+    usage = "Usage: validate_state.py [--fail-on-warnings] STATE_JSON_PATH_OR_INLINE_OR_-"
+    args = argv[1:]
+    if len(args) == 1 and args[0] in {"-h", "--help"}:
+        print(usage)
         return 0
-    if len(argv) != 2:
-        print("Usage: validate_state.py STATE_JSON_PATH_OR_INLINE_OR_-", file=sys.stderr)
+    fail_on_warnings = "--fail-on-warnings" in args
+    args = [arg for arg in args if arg != "--fail-on-warnings"]
+    if len(args) != 1:
+        print(usage, file=sys.stderr)
         return 2
     try:
-        state = load_state(argv[1])
+        state = load_state(args[0])
     except Exception as exc:  # noqa: BLE001 - this is a CLI diagnostic helper.
         print(json.dumps({"ok": False, "errors": [f"could not load state: {exc}"], "warnings": []}, ensure_ascii=False, indent=2))
         return 1
     result = validate(state)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
+    if not result["ok"]:
+        return 1
+    if fail_on_warnings and result["warnings"]:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

@@ -358,4 +358,6 @@ Endings can be:
 
 For ascension-like events, ask whether to summarize the human life or continue in the higher realm.
 
+When age reaches or exceeds `life_cap`, resolve it as a state event rather than a hidden clock tick. Ordinary mortal play should close into an ending or receive an explicit extension/transformation. If the arc continues, update `life_cap`, `existence_state`, `realm`, `timeline`, and `phase_summaries` before offering the next realm's affordances.
+
 When an ending is terminal, close or summarize most active threads. Leave only transition hooks such as inheritance, next-life choice, resurrection uncertainty, or higher-realm invitation. If play continues after a terminal-style transition, clear or update `terminal`, set the new realm/existence state, and start the next phase with a compact phase summary.

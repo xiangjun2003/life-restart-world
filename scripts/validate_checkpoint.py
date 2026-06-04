@@ -46,6 +46,25 @@ INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
 INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
+KNOWN_EXISTENCE_STATES = {"mortal", "resurrected", "cultivator", "immortal", "ascended", "post_human"}
+MORTAL_LIKE_STATES = {"mortal", "resurrected"}
+TRANSCENDENT_REALM_HINTS = (
+    "upper_realm",
+    "higher_realm",
+    "cloud_realm",
+    "celestial",
+    "immortal",
+    "ascend",
+    "heaven",
+    "sky_registry",
+    "cultivation",
+    "xian",
+    "上界",
+    "天界",
+    "仙",
+    "灵界",
+    "飞升",
+)
 
 
 def load_checkpoint(value: str) -> dict[str, Any]:
@@ -68,6 +87,11 @@ def is_int_like(value: Any) -> bool:
         return True
     except (TypeError, ValueError):
         return False
+
+
+def looks_transcendent_realm(value: Any) -> bool:
+    text = str(value or "").strip().lower()
+    return bool(text) and any(hint in text for hint in TRANSCENDENT_REALM_HINTS)
 
 
 def duplicate_values(items: list[Any]) -> list[str]:
@@ -130,6 +154,27 @@ def check_attribute_ranges(checkpoint: dict[str, Any], warnings: list[str]) -> N
         value = int(raw_value)
         if existence_state in {"mortal", "resurrected"} and (value < 0 or value > 12) and not has_attribute_note(checkpoint, attr):
             warnings.append(f"attributes.{attr}={value} is outside the ordinary human range; include attribute_notes or clamp future deltas")
+
+
+def check_lifespan_transition(checkpoint: dict[str, Any], warnings: list[str]) -> None:
+    existence_state = str(checkpoint.get("existence_state", "mortal"))
+    if existence_state and existence_state not in KNOWN_EXISTENCE_STATES:
+        warnings.append(f"existence_state is unusual: {existence_state}")
+    if existence_state in MORTAL_LIKE_STATES and checkpoint.get("terminal") is not True and looks_transcendent_realm(checkpoint.get("realm")):
+        warnings.append("realm looks transcendent while existence_state is mortal-like; confirm a mortal visitor premise or update existence_state")
+    if not is_int_like(checkpoint.get("age")) or not is_int_like(checkpoint.get("life_cap")):
+        return
+    if checkpoint.get("terminal") is True:
+        return
+
+    age = int(checkpoint["age"])
+    life_cap = int(checkpoint["life_cap"])
+    if age < life_cap:
+        return
+    if existence_state in MORTAL_LIKE_STATES:
+        warnings.append("age has reached or exceeded life_cap while terminal is false; mark an ending or record a concrete life extension/transformation")
+    elif existence_state == "cultivator":
+        warnings.append("cultivator age has reached or exceeded life_cap; extend life_cap, advance realm, or resolve the breakthrough/ending")
 
 
 def has_real_content_pack(value: dict[str, Any]) -> bool:
@@ -343,6 +388,11 @@ def collect_known_hooks(checkpoint: dict[str, Any]) -> set[str]:
         value = checkpoint.get(key)
         if isinstance(value, list):
             hooks.update(str(item) for item in value if isinstance(item, str))
+    phase_summaries = checkpoint.get("phase_summaries")
+    if isinstance(phase_summaries, list):
+        for item in phase_summaries:
+            if isinstance(item, dict) and item.get("id"):
+                hooks.add(str(item["id"]))
     world = checkpoint.get("world")
     session_note = world.get("session_note") if isinstance(world, dict) else None
     if isinstance(session_note, dict):
@@ -558,6 +608,7 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
         warnings.append("terminal_reason is set while terminal is false")
     if "time" in checkpoint and not isinstance(checkpoint["time"], (str, dict)):
         errors.append("time must be a string or object when present")
+    check_lifespan_transition(checkpoint, warnings)
 
     active_clocks = checkpoint.get("pressure_clocks") if isinstance(checkpoint.get("pressure_clocks"), dict) else {}
     if "world" in checkpoint:
@@ -582,20 +633,28 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) == 2 and argv[1] in {"-h", "--help"}:
-        print("Usage: validate_checkpoint.py CHECKPOINT_JSON_PATH_OR_INLINE_OR_-")
+    usage = "Usage: validate_checkpoint.py [--fail-on-warnings] CHECKPOINT_JSON_PATH_OR_INLINE_OR_-"
+    args = argv[1:]
+    if len(args) == 1 and args[0] in {"-h", "--help"}:
+        print(usage)
         return 0
-    if len(argv) != 2:
-        print("Usage: validate_checkpoint.py CHECKPOINT_JSON_PATH_OR_INLINE_OR_-", file=sys.stderr)
+    fail_on_warnings = "--fail-on-warnings" in args
+    args = [arg for arg in args if arg != "--fail-on-warnings"]
+    if len(args) != 1:
+        print(usage, file=sys.stderr)
         return 2
     try:
-        checkpoint = load_checkpoint(argv[1])
+        checkpoint = load_checkpoint(args[0])
     except Exception as exc:  # noqa: BLE001 - this is a CLI diagnostic helper.
         print(json.dumps({"ok": False, "errors": [f"could not load checkpoint: {exc}"], "warnings": []}, ensure_ascii=False, indent=2))
         return 1
     result = validate(checkpoint)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["ok"] else 1
+    if not result["ok"]:
+        return 1
+    if fail_on_warnings and result["warnings"]:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
