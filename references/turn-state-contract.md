@@ -14,6 +14,7 @@ Carry forward:
 - attributes and talents,
 - relationships,
 - pressure clocks,
+- time marker and evidence, when the current world needs them,
 - flags and event history,
 - open threads,
 - terminal or post-terminal state.
@@ -57,12 +58,16 @@ Every durable story consequence must appear in the delta.
 ```json
 {
   "age": [14, 15],
+  "time": ["14岁秋", "15岁春"],
   "attributes": {"INT": 1, "SPR": 1},
   "relationships": {
     "mentor_teacher": {"delta": 1, "note": "offers supervised lab time"}
   },
   "pressure_clocks": {
     "secrecy_risk": {"delta": -1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+  },
+  "evidence": {
+    "computer_room_permission": {"status": "witnessed", "holders": ["mentor_teacher"]}
   },
   "flags_added": ["authorized_lab_time"],
   "flags_removed": [],
@@ -83,6 +88,7 @@ After applying the delta, show a compact snapshot:
 - key attributes that changed or matter now,
 - 2-5 active relationships or factions,
 - 2-5 open threads or pressure clocks,
+- important evidence or time markers when they drive the next turn,
 - terminal status if the arc has ended or transformed.
 
 Do not print the full JSON ledger unless the user asks for debug/raw state.
@@ -106,6 +112,8 @@ Before sending the turn:
 
 - Did the user's free-form intent survive, or was it collapsed into the nearest listed option?
 - Did every durable story fact land in attributes, relationships, flags, clocks, threads, timeline, terminal state, or realm?
+- Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
+- If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?
 - Did any pressure clock advance, reduce, fill, or close?
 - Are action entries plausible from the updated state?
 - If script/content material failed, is that failure named during tests instead of hidden?

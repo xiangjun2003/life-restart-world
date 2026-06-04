@@ -11,6 +11,7 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
   "turn": 0,
   "pace": "standard",
   "age": 0,
+  "time": {"label": "0岁", "scale": "years"},
   "life_cap": 100,
   "existence_state": "mortal",
   "realm": "human_world",
@@ -35,6 +36,7 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
   "talents": [],
   "relationships": {},
   "pressure_clocks": {},
+  "evidence": {},
   "flags": [],
   "event_history": [],
   "open_threads": [],
@@ -95,6 +97,8 @@ For `standard` pace, a useful default is:
 - Put unresolved goals or tensions in `open_threads`.
 - Put recurring people in `relationships` with a score from `-5` to `5` and a short note when helpful.
 - Put slow pressure in `pressure_clocks` when a binary flag is too crude.
+- Put investigable claims, proofs, objects, and witness chains in `evidence` when flags are too flat.
+- Use `time` when several meaningful turns happen inside the same age.
 - Put all triggered event IDs in `event_history`.
 - Put each turn's story summary in `timeline`.
 
@@ -102,13 +106,39 @@ Relationship entries should be small but explicit:
 
 ```json
 {
-  "mother": {"score": 2, "note": "protective, worried about money"},
+  "mother": {
+    "score": 2,
+    "note": "protective, worried about money",
+    "tensions": ["angry about secrecy", "still protective"]
+  },
   "teacher_li": {"score": 3, "note": "sees promise and expects discipline"},
   "classmate_chen": {"score": -1, "note": "resentful after a public comparison"}
 }
 ```
 
-Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns.
+Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns. If a clock reaches its limit, either trigger its consequence soon or record `last_consequence` / `status` so the ledger shows it was honored.
+
+Evidence entries are optional but useful for investigative worlds:
+
+```json
+{
+  "father_cartridge": {
+    "claim": "The company knew the upper-dome leak was being blamed on low-sector demand.",
+    "status": "copied_and_witnessed",
+    "holders": ["mother", "rui", "school_archive"],
+    "risk": "high"
+  }
+}
+```
+
+Use `time` when age is too coarse:
+
+```json
+{
+  "age": 16,
+  "time": {"label": "16岁，高三前夜", "scale": "school_term", "beat": 7}
+}
+```
 
 ## Prologue State
 

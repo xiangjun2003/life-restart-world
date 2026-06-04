@@ -22,6 +22,7 @@ The session world note is reference material, not an engine. It should constrain
     "exam_deadline": {"stage": 1, "limit": 4, "meaning": "升学压力逐步逼近"},
     "family_debt": {"stage": 1, "limit": 5, "meaning": "家里经济余地变窄"}
   },
+  "evidence_tracks": [],
   "event_seeds": [
     "teacher notices unusual effort",
     "secret work conflicts with study",
@@ -51,6 +52,7 @@ Do not require a session world note for a quick original-style run if the user w
 - `state_axes` become good candidates for `flags`, `open_threads`, and state summaries.
 - `factions` help relationships and consequences stay specific.
 - `pressure_clocks` model slow-moving threats without forcing scripted events.
+- `evidence_tracks` remind the Game Master when proof, witnesses, artifacts, or credibility matter.
 - `event_seeds` provide authored-feeling material when no content-pack event fits.
 - `terminal_paths` remind the Game Master that endings can be social, emotional, supernatural, or transitional.
 

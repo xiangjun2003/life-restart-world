@@ -114,10 +114,36 @@ def check_pressure_clocks(state: dict[str, Any], errors: list[str], warnings: li
                 errors.append(f"pressure_clocks.{clock_id}.limit must be positive")
             if stage < 0 or stage > limit_value:
                 errors.append(f"pressure_clocks.{clock_id}.stage must be between 0 and limit")
+            if stage == limit_value and not clock.get("last_consequence") and clock.get("status") not in {"filled", "resolved"}:
+                warnings.append(f"pressure_clocks.{clock_id} is filled; record a consequence, status, or resolve it")
         elif stage < 0:
             errors.append(f"pressure_clocks.{clock_id}.stage must be nonnegative")
         if not clock.get("meaning"):
             warnings.append(f"pressure_clocks.{clock_id}.meaning is empty")
+
+
+def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    if "time" in state and not isinstance(state["time"], (str, dict)):
+        errors.append("time must be a string or object when present")
+    evidence = state.get("evidence")
+    if evidence is not None:
+        if not isinstance(evidence, dict):
+            errors.append("evidence must be an object when present")
+        else:
+            for item_id, item in evidence.items():
+                if not isinstance(item, dict):
+                    errors.append(f"evidence.{item_id} must be an object")
+                    continue
+                if not item.get("claim") and not item.get("status"):
+                    warnings.append(f"evidence.{item_id} should include claim or status")
+                holders = item.get("holders")
+                if holders is not None and not isinstance(holders, list):
+                    errors.append(f"evidence.{item_id}.holders must be a list when present")
+    relationships = state.get("relationships")
+    if isinstance(relationships, dict):
+        for name, entry in relationships.items():
+            if isinstance(entry, dict) and "tensions" in entry and not isinstance(entry["tensions"], list):
+                errors.append(f"relationships.{name}.tensions must be a list when present")
 
 
 def validate(state: dict[str, Any]) -> dict[str, Any]:
@@ -156,6 +182,7 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
 
     check_relationships(state, errors, warnings)
     check_pressure_clocks(state, errors, warnings)
+    check_optional_extensions(state, errors, warnings)
 
     if state.get("terminal") is False and state.get("terminal_reason"):
         warnings.append("terminal_reason is set while terminal is false")
