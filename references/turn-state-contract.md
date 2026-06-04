@@ -96,6 +96,8 @@ Every durable story consequence must appear in the delta.
 
 Prefer small deltas. A vivid scene does not need many flags, but any fact that changes future play must be tracked.
 
+During playtests, debug output, or handoff, you may store the latest durable change set as optional `last_delta` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to check that event IDs, flags, threads, evidence, clocks, relationships, and phase summaries named by the turn actually landed in the current ledger.
+
 As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
 
 Keep relationship scores within `-5..5`. Do not keep every named person or faction active forever; archive inactive contacts into `phase_summaries`, relationship notes, evidence holders, or timeline summaries so the current relationship board stays playable.

@@ -437,6 +437,98 @@ def check_last_intent(value: Any, errors: list[str], warnings: list[str]) -> Non
             errors.append(f"last_intent.{key} must be a string when present")
 
 
+def phase_thread_refs(checkpoint: dict[str, Any], key: str) -> set[str]:
+    refs: set[str] = set()
+    phase_summaries = checkpoint.get("phase_summaries")
+    if not isinstance(phase_summaries, list):
+        return refs
+    for item in phase_summaries:
+        if isinstance(item, dict) and isinstance(item.get(key), list):
+            refs.update(str(thread) for thread in item[key] if isinstance(thread, str))
+    return refs
+
+
+def phase_summary_ids(checkpoint: dict[str, Any]) -> set[str]:
+    phase_summaries = checkpoint.get("phase_summaries")
+    if not isinstance(phase_summaries, list):
+        return set()
+    return {str(item.get("id")) for item in phase_summaries if isinstance(item, dict) and item.get("id")}
+
+
+def check_last_delta(value: Any, checkpoint: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, dict):
+        errors.append("last_delta must be an object when present")
+        return
+    if not value.get("summary") and not value.get("timeline_item"):
+        warnings.append("last_delta should include summary or timeline_item")
+
+    event_material = value.get("event_material") or value.get("event_ids")
+    if event_material is not None:
+        check_string_list(event_material, "last_delta.event_material", errors, warnings)
+
+    attrs = value.get("attributes")
+    if attrs is not None:
+        if not isinstance(attrs, dict):
+            errors.append("last_delta.attributes must be an object when present")
+        else:
+            for attr, delta in attrs.items():
+                if attr not in ATTRIBUTES:
+                    warnings.append(f"last_delta.attributes.{attr} is not a standard attribute")
+                if not is_int_like(delta):
+                    errors.append(f"last_delta.attributes.{attr} must be numeric")
+
+    for key, checkpoint_key in [("relationships", "relationships"), ("pressure_clocks", "pressure_clocks"), ("evidence", "evidence")]:
+        touched = value.get(key)
+        if touched is None:
+            continue
+        if not isinstance(touched, dict):
+            errors.append(f"last_delta.{key} must be an object when present")
+            continue
+        ledger = checkpoint.get(checkpoint_key)
+        ledger_ids = set(ledger) if isinstance(ledger, dict) else set()
+        for item_id in touched:
+            if item_id not in ledger_ids:
+                warnings.append(f"last_delta.{key}.{item_id} is not present in {checkpoint_key}")
+
+    flags = {str(flag) for flag in checkpoint.get("flags", []) if isinstance(flag, str)} if isinstance(checkpoint.get("flags"), list) else set()
+    for key in ["flags_added", "flags_removed", "threads_added", "threads_closed"]:
+        if key in value:
+            check_string_list(value[key], f"last_delta.{key}", errors, warnings)
+
+    if isinstance(value.get("flags_added"), list):
+        for flag in value["flags_added"]:
+            if isinstance(flag, str) and flag not in flags:
+                warnings.append(f"last_delta.flags_added.{flag} is not present in flags")
+    if isinstance(value.get("flags_removed"), list):
+        for flag in value["flags_removed"]:
+            if isinstance(flag, str) and flag in flags:
+                warnings.append(f"last_delta.flags_removed.{flag} is still present in flags")
+
+    open_threads = {str(thread) for thread in checkpoint.get("open_threads", []) if isinstance(thread, str)} if isinstance(checkpoint.get("open_threads"), list) else set()
+    carried_threads = phase_thread_refs(checkpoint, "carried_threads")
+    closed_threads = phase_thread_refs(checkpoint, "closed_threads")
+    if isinstance(value.get("threads_added"), list):
+        for thread in value["threads_added"]:
+            if isinstance(thread, str) and thread not in open_threads and thread not in carried_threads and thread not in closed_threads:
+                warnings.append(f"last_delta.threads_added.{thread} is not present in open_threads or phase_summaries")
+    if isinstance(value.get("threads_closed"), list):
+        for thread in value["threads_closed"]:
+            if isinstance(thread, str) and thread in open_threads:
+                warnings.append(f"last_delta.threads_closed.{thread} is still present in open_threads")
+
+    phase_summary = value.get("phase_summary")
+    if phase_summary is not None:
+        if isinstance(phase_summary, str):
+            if phase_summary not in phase_summary_ids(checkpoint):
+                warnings.append(f"last_delta.phase_summary {phase_summary} is missing from phase_summaries")
+        elif isinstance(phase_summary, dict):
+            summary_id = phase_summary.get("id")
+            if summary_id and summary_id not in phase_summary_ids(checkpoint):
+                warnings.append(f"last_delta.phase_summary.id {summary_id} is missing from phase_summaries")
+        else:
+            errors.append("last_delta.phase_summary must be a string or object when present")
+
+
 def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -483,6 +575,8 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     check_next_affordances(checkpoint.get("next_affordances"), collect_known_hooks(checkpoint), errors, warnings)
     if "last_intent" in checkpoint:
         check_last_intent(checkpoint["last_intent"], errors, warnings)
+    if "last_delta" in checkpoint:
+        check_last_delta(checkpoint["last_delta"], checkpoint, errors, warnings)
 
     return {"ok": not errors, "errors": errors, "warnings": warnings}
 

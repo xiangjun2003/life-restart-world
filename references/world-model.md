@@ -219,6 +219,8 @@ For live-turn QA, `next_affordances` can also appear as an optional current-boar
 
 `last_intent` is also optional and current-turn scoped. It stores the latest parsed user action for QA or handoff, especially `source`, `selected_entry`, `modifiers`, `raw_action`, tags, targets, risk, and desired outcome. It should not replace `timeline`, `event_history`, or durable state changes.
 
+`last_delta` is optional and current-turn scoped. It stores what the latest turn claims to have changed, so validation can check that those event IDs, flags, threads, evidence, clocks, relationships, and phase summaries are visible in the actual ledger. It is an audit trace, not a second source of truth. Passing validation proves the named consequences were recorded; it does not prove the fiction, evidence claim, or clock movement was semantically wise.
+
 If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
 
 If a live clock appears in both `world.session_note.pressure_clocks` and top-level `pressure_clocks`, keep `stage` and `limit` synchronized. The top-level ledger is authoritative; the session note is context, not a second counter.

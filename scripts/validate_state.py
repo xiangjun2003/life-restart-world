@@ -378,6 +378,118 @@ def check_last_intent(value: Any, errors: list[str], warnings: list[str]) -> Non
             errors.append(f"last_intent.{key} must be a string when present")
 
 
+def phase_thread_refs(state: dict[str, Any], key: str) -> set[str]:
+    refs: set[str] = set()
+    phase_summaries = state.get("phase_summaries")
+    if not isinstance(phase_summaries, list):
+        return refs
+    for item in phase_summaries:
+        if isinstance(item, dict) and isinstance(item.get(key), list):
+            refs.update(str(thread) for thread in item[key] if isinstance(thread, str))
+    return refs
+
+
+def phase_summary_ids(state: dict[str, Any]) -> set[str]:
+    phase_summaries = state.get("phase_summaries")
+    if not isinstance(phase_summaries, list):
+        return set()
+    return {str(item.get("id")) for item in phase_summaries if isinstance(item, dict) and item.get("id")}
+
+
+def timeline_event_ids(state: dict[str, Any]) -> set[str]:
+    timeline = state.get("timeline")
+    if not isinstance(timeline, list):
+        return set()
+    ids: set[str] = set()
+    for item in timeline:
+        if isinstance(item, dict):
+            ids.update(parse_timeline_event_ids(item.get("event_id")))
+    return ids
+
+
+def check_last_delta(value: Any, state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, dict):
+        errors.append("last_delta must be an object when present")
+        return
+    if not value.get("summary") and not value.get("timeline_item"):
+        warnings.append("last_delta should include summary or timeline_item")
+
+    event_material = value.get("event_material") or value.get("event_ids")
+    if event_material is not None:
+        check_string_list_value(event_material, "last_delta.event_material", errors, warnings)
+        if isinstance(event_material, list):
+            history_ids = {str(item) for item in state.get("event_history", [])} if isinstance(state.get("event_history"), list) else set()
+            timeline_ids = timeline_event_ids(state)
+            for event_id in event_material:
+                if isinstance(event_id, str):
+                    if event_id not in history_ids:
+                        warnings.append(f"last_delta.event_material.{event_id} is missing from event_history")
+                    if event_id not in timeline_ids:
+                        warnings.append(f"last_delta.event_material.{event_id} is missing from timeline event_id")
+
+    attrs = value.get("attributes")
+    if attrs is not None:
+        if not isinstance(attrs, dict):
+            errors.append("last_delta.attributes must be an object when present")
+        else:
+            for attr, delta in attrs.items():
+                if attr not in ATTRIBUTES:
+                    warnings.append(f"last_delta.attributes.{attr} is not a standard attribute")
+                if not is_int_like(delta):
+                    errors.append(f"last_delta.attributes.{attr} must be numeric")
+
+    for key, state_key in [("relationships", "relationships"), ("pressure_clocks", "pressure_clocks"), ("evidence", "evidence")]:
+        touched = value.get(key)
+        if touched is None:
+            continue
+        if not isinstance(touched, dict):
+            errors.append(f"last_delta.{key} must be an object when present")
+            continue
+        ledger = state.get(state_key)
+        ledger_ids = set(ledger) if isinstance(ledger, dict) else set()
+        for item_id in touched:
+            if item_id not in ledger_ids:
+                warnings.append(f"last_delta.{key}.{item_id} is not present in state.{state_key}")
+
+    flags = {str(flag) for flag in state.get("flags", []) if isinstance(flag, str)} if isinstance(state.get("flags"), list) else set()
+    for key in ["flags_added", "flags_removed", "threads_added", "threads_closed"]:
+        if key in value:
+            check_string_list_value(value[key], f"last_delta.{key}", errors, warnings)
+
+    if isinstance(value.get("flags_added"), list):
+        for flag in value["flags_added"]:
+            if isinstance(flag, str) and flag not in flags:
+                warnings.append(f"last_delta.flags_added.{flag} is not present in state.flags")
+    if isinstance(value.get("flags_removed"), list):
+        for flag in value["flags_removed"]:
+            if isinstance(flag, str) and flag in flags:
+                warnings.append(f"last_delta.flags_removed.{flag} is still present in state.flags")
+
+    open_threads = {str(thread) for thread in state.get("open_threads", []) if isinstance(thread, str)} if isinstance(state.get("open_threads"), list) else set()
+    carried_threads = phase_thread_refs(state, "carried_threads")
+    closed_threads = phase_thread_refs(state, "closed_threads")
+    if isinstance(value.get("threads_added"), list):
+        for thread in value["threads_added"]:
+            if isinstance(thread, str) and thread not in open_threads and thread not in carried_threads and thread not in closed_threads:
+                warnings.append(f"last_delta.threads_added.{thread} is not present in open_threads or phase_summaries")
+    if isinstance(value.get("threads_closed"), list):
+        for thread in value["threads_closed"]:
+            if isinstance(thread, str) and thread in open_threads:
+                warnings.append(f"last_delta.threads_closed.{thread} is still present in open_threads")
+
+    phase_summary = value.get("phase_summary")
+    if phase_summary is not None:
+        if isinstance(phase_summary, str):
+            if phase_summary not in phase_summary_ids(state):
+                warnings.append(f"last_delta.phase_summary {phase_summary} is missing from phase_summaries")
+        elif isinstance(phase_summary, dict):
+            summary_id = phase_summary.get("id")
+            if summary_id and summary_id not in phase_summary_ids(state):
+                warnings.append(f"last_delta.phase_summary.id {summary_id} is missing from phase_summaries")
+        else:
+            errors.append("last_delta.phase_summary must be a string or object when present")
+
+
 def check_phase_summary_consistency(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     phase_summaries = state.get("phase_summaries")
     if not isinstance(phase_summaries, list):
@@ -627,6 +739,8 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
         check_next_affordances(state["next_affordances"], collect_known_hooks(state), errors, warnings)
     if "last_intent" in state:
         check_last_intent(state["last_intent"], errors, warnings)
+    if "last_delta" in state:
+        check_last_delta(state["last_delta"], state, errors, warnings)
     check_phase_summary_consistency(state, errors, warnings)
     check_timeline_and_history(state, errors, warnings)
     check_ledger_density(state, warnings)
