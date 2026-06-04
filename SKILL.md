@@ -62,6 +62,7 @@ Load only what is needed:
    - If a user proposes an implausible action, convert it into an attempt with cost, risk, and a check rather than refusing by default.
    - At natural phase endpoints, close or summarize stale threads into a phase summary so the current board stays playable.
    - Keep the visible board small: preserve history in timeline and phase summaries, but keep only active relationships, clocks, evidence, and threads in the current snapshot.
+   - Move resolved or archived clocks/evidence out of the active board and into summaries, notes, flags, or timeline.
    - When the user asks to save, resume, hand off to another agent, or continue after a long arc, create or consume a compact state checkpoint. Keep ordinary turns light unless a checkpoint is useful.
 
 5. End or transcend the life.

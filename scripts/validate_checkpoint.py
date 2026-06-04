@@ -46,6 +46,7 @@ INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
 INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
+INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
 KNOWN_EXISTENCE_STATES = {"mortal", "resurrected", "cultivator", "immortal", "ascended", "post_human"}
 MORTAL_LIKE_STATES = {"mortal", "resurrected"}
 TRANSCENDENT_REALM_HINTS = (
@@ -287,6 +288,8 @@ def check_pressure_clocks(value: Any, errors: list[str], warnings: list[str]) ->
             warnings.append(f"{path}.meaning is empty")
         if "status" in clock and not isinstance(clock["status"], str):
             errors.append(f"{path}.status must be a string when present")
+        elif str(clock.get("status", "")).lower() in INACTIVE_CLOCK_STATUSES:
+            warnings.append(f"{path} has inactive status {clock['status']}; move the result into phase_summaries or remove it before handoff")
 
 
 def check_evidence(value: Any, errors: list[str], warnings: list[str]) -> None:
@@ -302,6 +305,8 @@ def check_evidence(value: Any, errors: list[str], warnings: list[str]) -> None:
             continue
         if not item.get("claim") and not item.get("status"):
             warnings.append(f"{path} should include claim or status")
+        if str(item.get("status", "")).lower() in INACTIVE_EVIDENCE_STATUSES:
+            warnings.append(f"{path} has inactive status {item['status']}; archive it before handoff")
         holders = item.get("holders")
         if holders is None:
             warnings.append(f"{path}.holders is missing")

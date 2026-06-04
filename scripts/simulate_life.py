@@ -25,6 +25,8 @@ DEFAULT_PACK = ROOT / "references" / "content-packs" / "classic-lite.json"
 
 ATTRIBUTES = ("CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL")
 INTENT_STOP_TAGS = {"achievement", "birth", "choice", "ending", "old_age", "origin"}
+INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
+INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
 
 ACTION_TAGS = {
     "study": {"学习", "读书", "认字", "课本", "练习册", "借书", "考试", "学校", "成绩", "study", "exam", "school"},
@@ -386,6 +388,9 @@ def apply_pressure_clocks(state: dict[str, Any], updates: dict[str, Any] | None)
             clock["status"] = "filled"
         elif clock.get("status") == "filled" and limit is not None and stage < limit:
             clock.pop("status", None)
+        if str(clock.get("status", "")).lower() in INACTIVE_CLOCK_STATUSES:
+            clocks.pop(str(clock_id), None)
+            continue
         clocks[str(clock_id)] = clock
 
 
@@ -403,6 +408,9 @@ def apply_evidence(state: dict[str, Any], updates: dict[str, Any] | None) -> Non
         item = dict(current) if isinstance(current, dict) else {}
         for key, value in update.items():
             item[key] = value
+        if str(item.get("status", "")).lower() in INACTIVE_EVIDENCE_STATUSES:
+            evidence.pop(str(item_id), None)
+            continue
         evidence[str(item_id)] = item
 
 

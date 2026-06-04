@@ -157,7 +157,7 @@ Relationship entries should be small but explicit:
 }
 ```
 
-Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns. If a clock reaches its limit, either trigger its consequence soon or record `last_consequence` / `status` so the ledger shows it was honored.
+Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns. If a clock reaches its limit, either trigger its consequence soon or record `last_consequence` / `status` so the ledger shows it was honored. Once a clock is `resolved`, `closed`, `archived`, or otherwise inactive, move the outcome into `phase_summaries`, timeline, flags, or relationship notes instead of leaving the clock in the active board.
 
 Pressure clocks can count down only when the clock meaning is phrased as a deficit or risk, such as "evidence gap" or "debt pressure". They are not a generic progress bar. For proof quality, prefer `evidence` entries with `status`, `holders`, and chain notes, then close or resolve the pressure clock when the evidence gap is handled.
 
@@ -174,7 +174,7 @@ Evidence entries are optional but useful for investigative worlds:
 }
 ```
 
-Evidence should include enough custody to matter in play: at minimum a `claim` or `status`, plus `holders` when someone knows, stores, or can contest it.
+Evidence should include enough custody to matter in play: at minimum a `claim` or `status`, plus `holders` when someone knows, stores, or can contest it. Evidence that is already `resolved`, `closed`, `archived`, `spent`, or inactive belongs in a phase summary, timeline, flag, or relationship note unless it can still change the next few turns.
 
 Use `time` when age is too coarse:
 

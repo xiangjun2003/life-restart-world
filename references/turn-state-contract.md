@@ -168,6 +168,7 @@ Before sending the turn:
 - Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?
 - Did any pressure clock advance, reduce, fill, or close?
+- Did resolved or archived clocks/evidence leave the active board and move into a summary, note, flag, or timeline item?
 - If this turn closed a phase, did stale threads move into a phase summary instead of staying active?
 - If an attribute is outside the ordinary range, did the ledger explain it with `attribute_notes` or clamp future gains?
 - Are action entries plausible from the updated state?

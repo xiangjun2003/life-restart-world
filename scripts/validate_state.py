@@ -42,10 +42,11 @@ EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
 AFFORDANCE_RISKS = {"low", "medium", "high", "critical"}
 INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
 INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
-PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
+PRESSURE_STATUSES = {"active", "filled", "resolved", "closed", "archived", "inactive"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
+INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
 KNOWN_EXISTENCE_STATES = {"mortal", "resurrected", "cultivator", "immortal", "ascended", "post_human"}
 MORTAL_LIKE_STATES = {"mortal", "resurrected"}
 TRANSCENDENT_REALM_HINTS = (
@@ -198,6 +199,8 @@ def check_pressure_clocks(state: dict[str, Any], errors: list[str], warnings: li
             errors.append(f"pressure_clocks.{clock_id}.stage must be nonnegative")
         if clock.get("status") and str(clock["status"]) not in PRESSURE_STATUSES:
             warnings.append(f"pressure_clocks.{clock_id}.status is unusual: {clock['status']}")
+        if str(clock.get("status", "")).lower() in INACTIVE_CLOCK_STATUSES:
+            warnings.append(f"pressure_clocks.{clock_id} has inactive status {clock['status']}; move the result into phase_summaries or remove it from the active ledger")
         if not clock.get("meaning"):
             warnings.append(f"pressure_clocks.{clock_id}.meaning is empty")
 
@@ -232,6 +235,8 @@ def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings
                     continue
                 if not item.get("claim") and not item.get("status"):
                     warnings.append(f"evidence.{item_id} should include claim or status")
+                if str(item.get("status", "")).lower() in INACTIVE_EVIDENCE_STATUSES:
+                    warnings.append(f"evidence.{item_id} has inactive status {item['status']}; archive it into phase_summaries, timeline, flags, or relationship notes")
                 holders = item.get("holders")
                 if holders is not None and not isinstance(holders, list):
                     errors.append(f"evidence.{item_id}.holders must be a list when present")
