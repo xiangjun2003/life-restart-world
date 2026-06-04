@@ -594,9 +594,10 @@ def command_turn(args: argparse.Namespace) -> None:
             "error": "no_matching_event",
             "intent": intent,
             "age_step": age_step,
-            "state_delta": state_diff(before, state),
-            "state": state,
-            "gm_instruction": "Strict mode found no matching event. Report this gap instead of generating a fallback event.",
+            "state_delta": {},
+            "state": before,
+            "probe_state": state,
+            "gm_instruction": "Strict mode found no matching event. Report this gap instead of generating a fallback event. Keep state as the canonical pre-turn state; probe_state is diagnostic only.",
         }
         print(dump(result))
         raise SystemExit(2)
