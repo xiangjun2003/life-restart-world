@@ -811,6 +811,9 @@ def command_turn(args: argparse.Namespace) -> None:
         raise SystemExit(2)
     event = pick_event(candidates, rng) if candidates else generated_event(state, intent)
     selected = copy.deepcopy(event)
+    if selected.get("age_advance") == "none":
+        state["age"] = before.get("age", state.get("age", 0))
+        age_step = {"before": before.get("age", 0), "after": state["age"], "increment": 0}
     apply_event(state, selected, intent)
     if not state.get("terminal") and int(state.get("age", 0)) >= int(state.get("life_cap", 100)):
         if state.get("existence_state") in {"mortal", "resurrected"}:

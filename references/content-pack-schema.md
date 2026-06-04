@@ -74,6 +74,7 @@ Top-level compatibility fields help tests expose mismatches. They do not force a
 ## Event Fields
 
 - `age` or `age_range`: match by current age. Use `null` for timeless events.
+- `age_advance`: optional. Set to `none` for immediate transition events that should not consume years in helper-script stepping.
 - `realm`: omit or set to `any` to match all realms.
 - `weight`: random weight before action relevance.
 - `repeatable`: default `false`.
