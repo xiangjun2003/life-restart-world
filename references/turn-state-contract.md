@@ -106,6 +106,10 @@ After applying the delta, show a compact snapshot:
 
 Do not print the full JSON ledger unless the user asks for debug/raw state.
 
+For save/resume or agent handoff, provide a checkpoint capsule instead of the full ledger. The checkpoint should preserve the current playable state: session id, turn, age/time, realm/existence state, attributes, talents, active relationships, clocks, evidence, flags, open threads, recent timeline, and next affordances. Keep older resolved history summarized unless it still affects play.
+
+If an ordinary mortal attribute rises outside the usual human range, either justify it in `attribute_notes` or slow/clamp future deltas. A note can say why the value is exceptional and what future ordinary successes should stop increasing.
+
 ## Action Entries
 
 Offer 2-4 entries. They should be affordances, not a menu lock.
@@ -129,5 +133,7 @@ Before sending the turn:
 - Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?
 - Did any pressure clock advance, reduce, fill, or close?
+- If an attribute is outside the ordinary range, did the ledger explain it with `attribute_notes` or clamp future gains?
 - Are action entries plausible from the updated state?
+- If this is a save/resume/handoff moment, is there a checkpoint concise enough to copy but complete enough to continue?
 - If script/content material failed, is that failure named during tests instead of hidden?

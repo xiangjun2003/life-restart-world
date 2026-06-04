@@ -43,6 +43,18 @@ PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 
 
+def has_attribute_note(state: dict[str, Any], attr: str) -> bool:
+    notes = state.get("attribute_notes")
+    if not isinstance(notes, dict):
+        return False
+    note = notes.get(attr)
+    if isinstance(note, str):
+        return bool(note.strip())
+    if isinstance(note, dict):
+        return bool(note.get("note") or note.get("reason") or note.get("future_delta_policy"))
+    return False
+
+
 def load_state(value: str) -> dict[str, Any]:
     if value == "-":
         return json.loads(sys.stdin.read())
@@ -164,6 +176,22 @@ def check_pressure_clocks(state: dict[str, Any], errors: list[str], warnings: li
 def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     if "time" in state and not isinstance(state["time"], (str, dict)):
         errors.append("time must be a string or object when present")
+    attribute_notes = state.get("attribute_notes")
+    if attribute_notes is not None:
+        if not isinstance(attribute_notes, dict):
+            errors.append("attribute_notes must be an object when present")
+        else:
+            for attr, note in attribute_notes.items():
+                if attr not in ATTRIBUTES:
+                    warnings.append(f"attribute_notes.{attr} does not match a known attribute")
+                if isinstance(note, str):
+                    if not note.strip():
+                        warnings.append(f"attribute_notes.{attr} is empty")
+                elif isinstance(note, dict):
+                    if not note.get("note") and not note.get("reason") and not note.get("future_delta_policy"):
+                        warnings.append(f"attribute_notes.{attr} should include note, reason, or future_delta_policy")
+                else:
+                    errors.append(f"attribute_notes.{attr} must be a string or object")
     evidence = state.get("evidence")
     if evidence is not None:
         if not isinstance(evidence, dict):
@@ -280,6 +308,7 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
     if "terminal" in state and not isinstance(state.get("terminal"), bool):
         errors.append("terminal must be a boolean")
 
+    existence_state = str(state.get("existence_state", "mortal"))
     attrs = state.get("attributes")
     if not isinstance(attrs, dict):
         errors.append("attributes must be an object")
@@ -289,6 +318,10 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
                 errors.append(f"attributes.{attr} is missing")
             elif not is_int_like(attrs[attr]):
                 errors.append(f"attributes.{attr} must be numeric")
+            else:
+                value = int(attrs[attr])
+                if existence_state in {"mortal", "resurrected"} and (value < 0 or value > 12) and not has_attribute_note(state, attr):
+                    warnings.append(f"attributes.{attr}={value} is outside the ordinary human range; explain it or clamp future deltas")
 
     if not isinstance(state.get("world"), dict):
         errors.append("world must be an object")

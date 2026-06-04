@@ -206,6 +206,48 @@ Action entries are affordances, not restrictions. Avoid phrasing that implies th
 
 Good action entries are concrete enough to act on and different enough to create real agency. In most turns, include a steady option, a risky or costly option, and a relationship or faction-facing option. Add a world-specific or talent-specific option when the state supports it.
 
+## Checkpoint And Resume
+
+Use a state checkpoint when the user asks to save, resume, continue in a new thread, hand off to another agent, inspect raw state, or when a long arc reaches a natural breakpoint. Do not print checkpoints every turn by default; the normal compact snapshot is enough for ordinary play.
+
+A checkpoint is a compact, copyable capsule, not a transcript and not a replacement for the internal ledger. It should contain enough to resume without replaying the whole life:
+
+```json
+{
+  "kind": "life_restart_world_checkpoint",
+  "version": 1,
+  "session_id": "life-001",
+  "turn": 8,
+  "age": 16,
+  "time": {"label": "16岁春", "scale": "school_term", "beat": 3},
+  "realm": "human_world",
+  "existence_state": "mortal",
+  "attributes": {"CHR": 5, "INT": 9, "STR": 4, "MNY": 3, "SPR": 4, "LUK": 5, "WIL": 8},
+  "attribute_notes": {},
+  "talents": ["early_reader", "stubborn_heart"],
+  "relationships": {"family": 1, "mentor_teacher": 3, "close_classmate": 2},
+  "pressure_clocks": {"exam_deadline": "3/4", "secrecy_risk": "1/4"},
+  "evidence": {"admission_notice": "not yet received"},
+  "flags": ["teacher_noticed", "authorized_lab_time"],
+  "open_threads": ["exam_path", "computer_path", "family_budget_contract"],
+  "recent_timeline": [
+    "14岁：秘密打工被家里察觉。",
+    "15岁：用家庭预算谈判换来部分信任。",
+    "16岁春：电脑使用变成家庭约定。"
+  ],
+  "next_affordances": ["冲刺考试", "修复家庭信任", "扩大电脑路径"]
+}
+```
+
+When resuming from a checkpoint:
+
+- Treat the checkpoint as the current ledger seed, not as flavor text.
+- Do not restart from birth or re-roll talents unless the checkpoint says the life restarted.
+- Preserve age, time, relationships, clocks, evidence, flags, open threads, terminal status, and recent timeline facts.
+- Preserve `attribute_notes` when an attribute is outside the ordinary range or future deltas have been clamped.
+- If the checkpoint conflicts with nearby prose, state the ambiguity briefly and ask one clarification only when it blocks play.
+- After one resumed turn, update the ledger normally and keep event IDs/timeline auditable.
+
 ## Story Versus Mechanics
 
 Resolve mechanics first, then narrate. The model can enrich the scene, but it must not invent untracked consequences. If the story adds durable facts, add them to `flags`, `relationships`, `open_threads`, or `timeline`.

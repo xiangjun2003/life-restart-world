@@ -59,6 +59,19 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
 
 Keep attributes roughly in a `0-10` human range unless the world has crossed into cultivation, immortal, post-human, or other legendary states.
 
+Use `attribute_notes` when an ordinary mortal attribute exceeds the usual range and should remain playable instead of being repeatedly increased. The note should explain the fiction and future-delta policy:
+
+```json
+{
+  "attribute_notes": {
+    "WIL": {
+      "note": "Rare practiced discipline under long family and exam pressure; not supernatural endurance.",
+      "future_delta_policy": "Do not add WIL for ordinary grinding; reward sustainable choices with SPR or pressure relief instead."
+    }
+  }
+}
+```
+
 ## Existence States
 
 Do not hard-cap lives at 100.
@@ -148,6 +161,22 @@ Use `time` when age is too coarse:
 ```
 
 If multiple playable turns share the same `age`, add `time` to the state and to the relevant timeline items. The current state-level `time` tells where play is now; timeline item times preserve the order of past beats.
+
+## Checkpoints
+
+A checkpoint is a compact export of the current ledger for save/resume and agent handoff. It is not a second source of truth during live play; it is a portable seed for reconstructing the ledger when context is missing.
+
+Good checkpoints preserve:
+
+- `session_id`, `turn`, `age`, `time`, `realm`, `existence_state`, and terminal status,
+- current attributes and talents,
+- `attribute_notes` for any exceptional or clamped attributes,
+- active relationships or factions,
+- active pressure clocks, evidence, flags, and open threads,
+- the last 3-6 timeline beats or a short phase summary,
+- 2-4 next affordances.
+
+They omit resolved clutter unless it is needed to understand a current relationship, flag, evidence item, or pressure clock. If the checkpoint is later resumed, rebuild the internal ledger from the checkpoint and continue; do not retcon recent timeline facts to fit a new random event.
 
 ## Prologue State
 
