@@ -248,14 +248,22 @@ A checkpoint is a compact, copyable capsule, not a transcript and not a replacem
   "turn": 8,
   "age": 16,
   "time": {"label": "16岁春", "scale": "school_term", "beat": 3},
+  "life_cap": 100,
   "realm": "human_world",
   "existence_state": "mortal",
+  "terminal": false,
+  "terminal_reason": null,
   "attributes": {"CHR": 5, "INT": 9, "STR": 4, "MNY": 3, "SPR": 4, "LUK": 5, "WIL": 8},
   "attribute_notes": {},
   "talents": ["early_reader", "stubborn_heart"],
   "relationships": {"family": 1, "mentor_teacher": 3, "close_classmate": 2},
-  "pressure_clocks": {"exam_deadline": "3/4", "secrecy_risk": "1/4"},
-  "evidence": {"admission_notice": "not yet received"},
+  "pressure_clocks": {
+    "exam_deadline": {"stage": 3, "limit": 4, "meaning": "升学压力逐步逼近"},
+    "secrecy_risk": {"stage": 1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+  },
+  "evidence": {
+    "admission_notice": {"status": "not_received", "holders": ["self"], "risk": "low"}
+  },
   "flags": ["teacher_noticed", "authorized_lab_time"],
   "open_threads": ["exam_path", "computer_path", "family_budget_contract"],
   "phase_summaries": [
@@ -277,6 +285,7 @@ A checkpoint is a compact, copyable capsule, not a transcript and not a replacem
 When resuming from a checkpoint:
 
 - Treat the checkpoint as the current ledger seed, not as flavor text.
+- Expand compact checkpoint fields back into ledger-shaped objects before play continues. For example, pressure clocks need `stage`, `limit`, and `meaning`; evidence needs `claim` or `status` plus `holders` when custody matters.
 - Do not restart from birth or re-roll talents unless the checkpoint says the life restarted.
 - Preserve age, time, relationships, clocks, evidence, flags, open threads, terminal status, and recent timeline facts.
 - Preserve phase summaries so old arcs do not need to be replayed.

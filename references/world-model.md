@@ -185,7 +185,7 @@ A checkpoint is a compact export of the current ledger for save/resume and agent
 
 Good checkpoints preserve:
 
-- `session_id`, `turn`, `age`, `time`, `realm`, `existence_state`, and terminal status,
+- `session_id`, `turn`, `age`, `time`, `life_cap`, `realm`, `existence_state`, and terminal status,
 - current attributes and talents,
 - `attribute_notes` for any exceptional or clamped attributes,
 - active relationships or factions,
@@ -195,6 +195,8 @@ Good checkpoints preserve:
 - 2-4 next affordances.
 
 They omit resolved clutter unless it is needed to understand a current relationship, flag, evidence item, or pressure clock. If the checkpoint is later resumed, rebuild the internal ledger from the checkpoint and continue; do not retcon recent timeline facts to fit a new random event.
+
+Compact checkpoint display is allowed, but resumed play must expand back to the full ledger shape. Avoid leaving clocks as strings like `"3/4"` or evidence as bare strings in the reconstructed state; use objects with stage/limit/meaning, status/claim, holders, and risk where relevant.
 
 ## Prologue State
 

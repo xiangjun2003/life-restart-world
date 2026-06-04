@@ -33,6 +33,7 @@ For each playtest, record:
 - Each turn's user action, event or adjudication, state delta, and next affordances.
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
+- Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
 - When editing, importing, or selecting a content pack for script-assisted tests, record `scripts/validate_content_pack.py` output before play begins.

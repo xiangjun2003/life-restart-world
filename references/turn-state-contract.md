@@ -113,9 +113,11 @@ Do not print the full JSON ledger unless the user asks for debug/raw state.
 
 For save/resume or agent handoff, provide a checkpoint capsule instead of the full ledger. The checkpoint should preserve the current playable state: session id, turn, age/time, realm/existence state, attributes, talents, active relationships, clocks, evidence, flags, open threads, recent timeline, and next affordances. Keep older resolved history summarized unless it still affects play.
 
+When resuming, expand compact checkpoint notation into full ledger objects before validating or resolving the next turn. Do not leave active clocks as `"3/4"` strings or evidence as bare labels in the reconstructed state.
+
 If an ordinary mortal attribute rises outside the usual human range, either justify it in `attribute_notes` or slow/clamp future deltas. A note can say why the value is exceptional and what future ordinary successes should stop increasing.
 
-For phase closure, write a `phase_summary` or add an item to `phase_summaries`. Close resolved threads rather than leaving them in the active board. Carry forward only tensions that can drive the next turn.
+For phase closure, write a `phase_summary` or add an item to `phase_summaries` with a stable `id`. Close resolved threads rather than leaving them in the active board. A thread listed in `closed_threads` should not still appear in `open_threads` unless the story explicitly reopened it as a new active problem. Carry forward only tensions that can drive the next turn.
 
 ## Action Entries
 

@@ -245,6 +245,41 @@ def check_string_list_value(value: Any, path: str, errors: list[str], warnings: 
             errors.append(f"{path}[{index}] must be a nonempty string")
 
 
+def check_phase_summary_consistency(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    phase_summaries = state.get("phase_summaries")
+    if not isinstance(phase_summaries, list):
+        return
+    open_threads = {str(item) for item in state.get("open_threads", [])} if isinstance(state.get("open_threads"), list) else set()
+    seen_ids: set[str] = set()
+    for index, item in enumerate(phase_summaries):
+        if not isinstance(item, dict):
+            continue
+        summary_id = item.get("id")
+        if summary_id is None:
+            warnings.append(f"phase_summaries[{index}].id is missing")
+        elif not isinstance(summary_id, str) or not summary_id.strip():
+            errors.append(f"phase_summaries[{index}].id must be a nonempty string when present")
+        elif summary_id in seen_ids:
+            warnings.append(f"phase_summaries contains duplicate id: {summary_id}")
+        elif summary_id:
+            seen_ids.add(summary_id)
+
+        for key in ["closed_threads", "carried_threads", "outcomes"]:
+            if key in item and isinstance(item[key], list):
+                check_string_list_value(item[key], f"phase_summaries[{index}].{key}", errors, warnings)
+
+        closed = {str(thread) for thread in item.get("closed_threads", []) if isinstance(thread, str)}
+        carried = {str(thread) for thread in item.get("carried_threads", []) if isinstance(thread, str)}
+        overlap = sorted(closed & carried)
+        if overlap:
+            warnings.append(f"phase_summaries[{index}] closes and carries the same threads: {overlap}")
+        still_open = sorted(closed & open_threads)
+        if still_open:
+            warnings.append(f"phase_summaries[{index}].closed_threads still appear in open_threads: {still_open}")
+        if "next_phase" in item and not isinstance(item["next_phase"], str):
+            errors.append(f"phase_summaries[{index}].next_phase must be a string when present")
+
+
 def check_session_note_pressure_clocks(state: dict[str, Any], note: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     clocks = note.get("pressure_clocks")
     if clocks is None:
@@ -436,6 +471,7 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
     check_relationships(state, errors, warnings)
     check_pressure_clocks(state, errors, warnings)
     check_optional_extensions(state, errors, warnings)
+    check_phase_summary_consistency(state, errors, warnings)
     check_timeline_and_history(state, errors, warnings)
     check_ledger_density(state, warnings)
 
