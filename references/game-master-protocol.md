@@ -134,12 +134,14 @@ Example:
   "summary": "The county-school arc ends with a funded city-study track.",
   "closed_threads": ["exam_path", "leave_or_stay", "family_budget_contract"],
   "carried_threads": ["city_life", "computer_path", "family_promise"],
+  "closed_clocks": ["exam_deadline"],
+  "archived_evidence": ["computer_room_permission"],
   "outcomes": ["admission_notice", "family trust partly repaired"],
   "next_phase": "city_student_life"
 }
 ```
 
-After phase closure, do not keep old resolved threads in the visible snapshot. If they still matter, preserve them as flags, relationship notes, evidence, or `phase_summaries`.
+After phase closure, do not keep old resolved threads, clocks, or evidence in the visible snapshot. If they still matter, preserve them as flags, relationship notes, evidence, or `phase_summaries`. For debug or handoff, prefer structured phase fields such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence` so validation can trace why an item left the active board.
 
 Board hygiene matters more in long lives than in one-shot scenes. If the visible snapshot starts listing too many active people, clocks, evidence items, or threads, stop and archive stale items before offering the next entries. The player should see the current decision pressure, not the whole biography.
 

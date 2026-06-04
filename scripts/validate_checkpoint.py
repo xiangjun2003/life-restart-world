@@ -47,6 +47,22 @@ INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
 INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
+PHASE_STRING_LIST_KEYS = [
+    "closed_threads",
+    "carried_threads",
+    "outcomes",
+    "closed_clocks",
+    "resolved_clocks",
+    "archived_clocks",
+    "closed_evidence",
+    "resolved_evidence",
+    "archived_evidence",
+    "spent_evidence",
+]
+ARCHIVE_KEYS_BY_KIND = {
+    "pressure_clocks": {"closed_clocks", "resolved_clocks", "archived_clocks"},
+    "evidence": {"closed_evidence", "resolved_evidence", "archived_evidence", "spent_evidence"},
+}
 KNOWN_EXISTENCE_STATES = {"mortal", "resurrected", "cultivator", "immortal", "ascended", "post_human"}
 MORTAL_LIKE_STATES = {"mortal", "resurrected"}
 TRANSCENDENT_REALM_HINTS = (
@@ -337,7 +353,7 @@ def check_phase_summaries(value: Any, open_threads: Any, errors: list[str], warn
             warnings.append(f"phase_summaries[{index}] should include summary or title")
         if "age" not in item and "time" not in item:
             warnings.append(f"phase_summaries[{index}] should include age or time")
-        for key in ["closed_threads", "carried_threads", "outcomes"]:
+        for key in PHASE_STRING_LIST_KEYS:
             if key in item:
                 check_string_list(item[key], f"phase_summaries[{index}].{key}", errors, warnings)
         closed = {str(thread) for thread in item.get("closed_threads", []) if isinstance(thread, str)}
@@ -365,6 +381,9 @@ def check_recent_timeline(value: Any, errors: list[str], warnings: list[str]) ->
         elif isinstance(item, dict):
             if not item.get("summary") and not item.get("title") and not item.get("action"):
                 warnings.append(f"recent_timeline[{index}] should include summary, title, or action")
+            for key in PHASE_STRING_LIST_KEYS:
+                if key in item:
+                    check_string_list(item[key], f"recent_timeline[{index}].{key}", errors, warnings)
         else:
             errors.append(f"recent_timeline[{index}] must be a string or object")
 
@@ -522,6 +541,82 @@ def phase_summary_ids(checkpoint: dict[str, Any]) -> set[str]:
     return {str(item.get("id")) for item in phase_summaries if isinstance(item, dict) and item.get("id")}
 
 
+def archived_reference_text(checkpoint: dict[str, Any]) -> str:
+    archive_surface = {
+        "phase_summaries": checkpoint.get("phase_summaries"),
+        "recent_timeline": checkpoint.get("recent_timeline"),
+        "flags": checkpoint.get("flags"),
+        "relationships": checkpoint.get("relationships"),
+    }
+    return json.dumps(archive_surface, ensure_ascii=False, sort_keys=True)
+
+
+def list_contains_id(value: Any, item_id: str) -> bool:
+    if not isinstance(value, list):
+        return False
+    for item in value:
+        if isinstance(item, str) and item == item_id:
+            return True
+        if isinstance(item, dict) and str(item.get("id", "")) == item_id:
+            return True
+    return False
+
+
+def structured_archive_mentions_item(checkpoint: dict[str, Any], item_id: str, checkpoint_key: str) -> bool:
+    archive_keys = ARCHIVE_KEYS_BY_KIND.get(checkpoint_key, set())
+    if not archive_keys:
+        return False
+    for surface_key in ["phase_summaries", "recent_timeline"]:
+        surface = checkpoint.get(surface_key)
+        if not isinstance(surface, list):
+            continue
+        for entry in surface:
+            if isinstance(entry, dict) and any(list_contains_id(entry.get(key), item_id) for key in archive_keys):
+                return True
+    return False
+
+
+def has_malformed_archive_field(checkpoint: dict[str, Any], item_id: str, checkpoint_key: str) -> bool:
+    archive_keys = ARCHIVE_KEYS_BY_KIND.get(checkpoint_key, set())
+    for surface_key in ["phase_summaries", "recent_timeline"]:
+        surface = checkpoint.get(surface_key)
+        if not isinstance(surface, list):
+            continue
+        for entry in surface:
+            if not isinstance(entry, dict):
+                continue
+            for key in archive_keys:
+                value = entry.get(key)
+                if not isinstance(value, list) and str(item_id) in json.dumps(value, ensure_ascii=False):
+                    return True
+    return False
+
+
+def loose_archive_mentions_item(checkpoint: dict[str, Any], item_id: str) -> bool:
+    return str(item_id) in archived_reference_text(checkpoint)
+
+
+def delta_item_status(value: Any) -> str:
+    if isinstance(value, dict):
+        if "status" in value:
+            return str(value["status"]).lower()
+        for key in ["after", "to", "new"]:
+            nested = value.get(key)
+            if isinstance(nested, dict) and "status" in nested:
+                return str(nested["status"]).lower()
+    if isinstance(value, list) and value:
+        return delta_item_status(value[-1])
+    return ""
+
+
+def archive_field_suggestion(checkpoint_key: str) -> str:
+    if checkpoint_key == "pressure_clocks":
+        return "closed_clocks/resolved_clocks/archived_clocks"
+    if checkpoint_key == "evidence":
+        return "closed_evidence/resolved_evidence/archived_evidence/spent_evidence"
+    return "structured archive fields"
+
+
 def check_last_delta(value: Any, checkpoint: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, dict):
         errors.append("last_delta must be an object when present")
@@ -553,8 +648,20 @@ def check_last_delta(value: Any, checkpoint: dict[str, Any], errors: list[str], 
             continue
         ledger = checkpoint.get(checkpoint_key)
         ledger_ids = set(ledger) if isinstance(ledger, dict) else set()
-        for item_id in touched:
+        for item_id, item_delta in touched.items():
             if item_id not in ledger_ids:
+                status = delta_item_status(item_delta)
+                inactive_statuses = INACTIVE_CLOCK_STATUSES if key == "pressure_clocks" else INACTIVE_EVIDENCE_STATUSES if key == "evidence" else set()
+                if status in inactive_statuses:
+                    if structured_archive_mentions_item(checkpoint, str(item_id), checkpoint_key):
+                        continue
+                    if has_malformed_archive_field(checkpoint, str(item_id), checkpoint_key):
+                        continue
+                    if loose_archive_mentions_item(checkpoint, str(item_id)):
+                        warnings.append(f"last_delta.{key}.{item_id} is inactive and only loosely archived; add {archive_field_suggestion(checkpoint_key)} to a phase_summaries or recent_timeline item")
+                        continue
+                    warnings.append(f"last_delta.{key}.{item_id} is inactive but has no structured archive reference; add {archive_field_suggestion(checkpoint_key)} before removing it from the active ledger")
+                    continue
                 warnings.append(f"last_delta.{key}.{item_id} is not present in {checkpoint_key}")
 
     flags = {str(flag) for flag in checkpoint.get("flags", []) if isinstance(flag, str)} if isinstance(checkpoint.get("flags"), list) else set()

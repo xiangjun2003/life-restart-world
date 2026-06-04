@@ -96,7 +96,7 @@ Every durable story consequence must appear in the delta.
 
 Prefer small deltas. A vivid scene does not need many flags, but any fact that changes future play must be tracked.
 
-During playtests, debug output, or handoff, you may store the latest durable change set as optional `last_delta` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to check that event IDs, flags, threads, evidence, clocks, relationships, and phase summaries named by the turn actually landed in the current ledger.
+During playtests, debug output, or handoff, you may store the latest durable change set as optional `last_delta` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to check that event IDs, flags, threads, evidence, clocks, relationships, and phase summaries named by the turn actually landed in the current ledger. If `last_delta` resolves, closes, archives, or spends evidence/clocks, those items should leave the active board but still be named in structured archive fields such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence` on `phase_summaries` or timeline items. Loose mentions in prose are useful for humans, but structured fields make handoff validation reliable.
 
 As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
 
@@ -123,7 +123,7 @@ When resuming, expand compact checkpoint notation into full ledger objects befor
 
 If an ordinary mortal attribute rises outside the usual human range, either justify it in `attribute_notes` or slow/clamp future deltas. A note can say why the value is exceptional and what future ordinary successes should stop increasing.
 
-For phase closure, write a `phase_summary` or add an item to `phase_summaries` with a stable `id`. Close resolved threads rather than leaving them in the active board. A thread listed in `closed_threads` should not still appear in `open_threads` unless the story explicitly reopened it as a new active problem. Carry forward only tensions that can drive the next turn.
+For phase closure, write a `phase_summary` or add an item to `phase_summaries` with a stable `id`. Close resolved threads rather than leaving them in the active board. A thread listed in `closed_threads` should not still appear in `open_threads` unless the story explicitly reopened it as a new active problem. If closing pressure clocks or evidence at the same time, list them in `closed_clocks`, `resolved_clocks`, `archived_clocks`, `closed_evidence`, `archived_evidence`, or `spent_evidence`. Carry forward only tensions that can drive the next turn.
 
 ## Action Entries
 
