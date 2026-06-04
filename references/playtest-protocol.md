@@ -11,6 +11,7 @@ Do not hide failures during tests.
 - If keyword parsing misses an action, report the miss instead of pretending the parser understood it.
 - If a condition, age pool, or state transition looks inconsistent, preserve the transcript and name the inconsistency.
 - Manual hosting is allowed, but label it as manual hosting, not script-backed adjudication.
+- For helper-script tests, prefer `simulate_life.py turn --intent <intent.json> --strict` so missing event support is reported instead of replaced by generated events.
 
 The purpose of playtesting is to expose missing capabilities, not to produce the smoothest possible demo.
 

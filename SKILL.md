@@ -68,12 +68,13 @@ Use `scripts/simulate_life.py` when deterministic state stepping is useful, but 
 ```bash
 python3 scripts/simulate_life.py new --world "1990s county realism" --seed 7
 python3 scripts/simulate_life.py turn --state state.json --action "I study hard but secretly earn money"
+python3 scripts/simulate_life.py turn --state state.json --intent intent.json --strict
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 ```
 
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
 
-When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior.
+When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events would hide a missing event.
 
 ## Output Shape For Play
 

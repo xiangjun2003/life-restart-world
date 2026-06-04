@@ -232,6 +232,22 @@ def infer_action(action: str | None) -> dict[str, Any]:
     }
 
 
+def normalize_intent(value: dict[str, Any], action: str | None = None) -> dict[str, Any]:
+    intent = dict(value)
+    if not intent.get("summary"):
+        intent["summary"] = action or "continue along the current life pressure"
+    tags = intent.get("tags", [])
+    if isinstance(tags, str):
+        tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+    intent["tags"] = sorted(str(tag) for tag in tags)
+    checks = intent.get("checks", [])
+    if isinstance(checks, str):
+        checks = [check.strip() for check in checks.split(",") if check.strip()]
+    intent["checks"] = [str(check) for check in checks]
+    intent["risk"] = intent.get("risk", "low")
+    return intent
+
+
 def weighted_sample_without_replacement(items: list[dict[str, Any]], count: int, rng: random.Random) -> list[dict[str, Any]]:
     pool = [copy.deepcopy(item) for item in items]
     chosen = []
@@ -353,17 +369,14 @@ def collect_candidates(pack: dict[str, Any], state: dict[str, Any], intent: dict
         event = copy.deepcopy(raw)
         event_id = str(event.get("id"))
         authored_age = "age" in event or "age_range" in event
+        if authored_age and not age_matches(event, age):
+            continue
         if has_age_pool and event_id not in pool_entries and not authored_age:
             continue
         event_realm = event.get("realm", "any")
         if event_realm not in {"any", realm, None}:
             continue
-        if not age_matches(event, age):
-            pooled = pool_entries.get(event_id)
-            if pooled is None:
-                continue
-        else:
-            pooled = pool_entries.get(event_id)
+        pooled = pool_entries.get(event_id)
         if not event.get("repeatable", False) and event_id in history:
             continue
         if not eval_condition(state, event.get("include")):
@@ -543,6 +556,23 @@ def load_state_arg(value: str) -> dict[str, Any]:
     return json.loads(value)
 
 
+def load_intent_arg(value: str | None, action: str | None = None) -> dict[str, Any] | None:
+    if not value:
+        return None
+    if value == "-":
+        return normalize_intent(json.loads(sys.stdin.read()), action)
+    stripped = value.lstrip()
+    if stripped.startswith("{"):
+        return normalize_intent(json.loads(value), action)
+    path = Path(value)
+    try:
+        if path.exists():
+            return normalize_intent(load_json(path), action)
+    except OSError:
+        pass
+    return normalize_intent(json.loads(value), action)
+
+
 def command_new(args: argparse.Namespace) -> None:
     pack = load_json(Path(args.pack))
     state = create_state(pack, args)
@@ -553,12 +583,23 @@ def command_turn(args: argparse.Namespace) -> None:
     pack = load_json(Path(args.pack))
     state = load_state_arg(args.state)
     seed = state.get("rng_seed")
-    rng = random.Random(f"{seed}:{state.get('turn', 0)}:{args.action}")
+    intent = load_intent_arg(args.intent, args.action) or infer_action(args.action)
+    rng = random.Random(f"{seed}:{state.get('turn', 0)}:{intent.get('summary')}")
     before = copy.deepcopy(state)
-    intent = infer_action(args.action)
     age_step = advance_age(state, rng)
     state["turn"] = int(state.get("turn", 0)) + 1
     candidates = collect_candidates(pack, state, intent)
+    if not candidates and args.strict:
+        result = {
+            "error": "no_matching_event",
+            "intent": intent,
+            "age_step": age_step,
+            "state_delta": state_diff(before, state),
+            "state": state,
+            "gm_instruction": "Strict mode found no matching event. Report this gap instead of generating a fallback event.",
+        }
+        print(dump(result))
+        raise SystemExit(2)
     event = pick_event(candidates, rng) if candidates else generated_event(state, intent)
     selected = copy.deepcopy(event)
     apply_event(state, selected, intent)
@@ -645,6 +686,8 @@ def parser() -> argparse.ArgumentParser:
     add_pack(turn)
     turn.add_argument("--state", required=True, help="state JSON path, JSON string, or '-' for stdin")
     turn.add_argument("--action", default="")
+    turn.add_argument("--intent", help="semantic intent JSON path or JSON string; prefer this over keyword parsing when available")
+    turn.add_argument("--strict", action="store_true", help="fail with no_matching_event instead of generating a fallback event")
     turn.add_argument("--save", help="optional path to save updated state")
     turn.set_defaults(func=command_turn)
 

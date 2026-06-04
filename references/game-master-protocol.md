@@ -86,7 +86,7 @@ Convert the action into an intent object. Do this semantically; do not depend on
 
 If the user gives no action, use a plausible default consistent with the character's talents and open threads.
 
-For script-assisted play, pass an explicit intent object when available. Keyword parsing is only a fallback convenience, not the main understanding layer.
+For script-assisted play, pass an explicit intent object with `--intent` when available. Keyword parsing is only a fallback convenience, not the main understanding layer.
 
 ## Event Candidate Sources
 
