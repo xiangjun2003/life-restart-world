@@ -86,6 +86,7 @@ Every durable story consequence must appear in the delta.
   "flags_removed": [],
   "threads_added": [],
   "threads_closed": [],
+  "phase_summary": null,
   "event_material": ["school_computer_room_access"],
   "timeline_item": "15岁：你用半真半假的坦白换来每周一次机房边角时间。"
 }
@@ -110,6 +111,8 @@ For save/resume or agent handoff, provide a checkpoint capsule instead of the fu
 
 If an ordinary mortal attribute rises outside the usual human range, either justify it in `attribute_notes` or slow/clamp future deltas. A note can say why the value is exceptional and what future ordinary successes should stop increasing.
 
+For phase closure, write a `phase_summary` or add an item to `phase_summaries`. Close resolved threads rather than leaving them in the active board. Carry forward only tensions that can drive the next turn.
+
 ## Action Entries
 
 Offer 2-4 entries. They should be affordances, not a menu lock.
@@ -133,6 +136,7 @@ Before sending the turn:
 - Did evidence, proof, promises, or physical objects need an `evidence` entry instead of only a flag?
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?
 - Did any pressure clock advance, reduce, fill, or close?
+- If this turn closed a phase, did stale threads move into a phase summary instead of staying active?
 - If an attribute is outside the ordinary range, did the ledger explain it with `attribute_notes` or clamp future gains?
 - Are action entries plausible from the updated state?
 - If this is a save/resume/handoff moment, is there a checkpoint concise enough to copy but complete enough to continue?

@@ -215,6 +215,22 @@ def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings
         for name, entry in relationships.items():
             if isinstance(entry, dict) and "tensions" in entry and not isinstance(entry["tensions"], list):
                 errors.append(f"relationships.{name}.tensions must be a list when present")
+    phase_summaries = state.get("phase_summaries")
+    if phase_summaries is not None:
+        if not isinstance(phase_summaries, list):
+            errors.append("phase_summaries must be a list when present")
+        else:
+            for index, item in enumerate(phase_summaries):
+                if not isinstance(item, dict):
+                    errors.append(f"phase_summaries[{index}] must be an object")
+                    continue
+                if not item.get("summary") and not item.get("title"):
+                    warnings.append(f"phase_summaries[{index}] should include summary or title")
+                if "age" not in item and "time" not in item:
+                    warnings.append(f"phase_summaries[{index}] should include age or time")
+                for key in ["closed_threads", "carried_threads", "outcomes"]:
+                    if key in item and not isinstance(item[key], list):
+                        errors.append(f"phase_summaries[{index}].{key} must be a list when present")
 
 
 def check_timeline_and_history(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
@@ -287,6 +303,8 @@ def check_ledger_density(state: dict[str, Any], warnings: list[str]) -> None:
     relationships = state.get("relationships")
     if isinstance(relationships, dict) and len(relationships) > 8:
         warnings.append(f"relationships has more than 8 entries ({len(relationships)}): {sorted(relationships)}; keep only active relationships in the snapshot")
+    if state.get("terminal") is True and isinstance(open_threads, list) and len(open_threads) > 3:
+        warnings.append(f"terminal state still has many open_threads ({len(open_threads)}): {open_threads}; close or summarize resolved threads")
 
 
 def validate(state: dict[str, Any]) -> dict[str, Any]:

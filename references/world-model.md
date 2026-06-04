@@ -37,6 +37,7 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
   "relationships": {},
   "pressure_clocks": {},
   "evidence": {},
+  "phase_summaries": [],
   "flags": [],
   "event_history": [],
   "open_threads": [],
@@ -111,12 +112,28 @@ For `standard` pace, a useful default is:
 - Put recurring people in `relationships` with a score from `-5` to `5` and a short note when helpful.
 - Put slow pressure in `pressure_clocks` when a binary flag is too crude.
 - Put investigable claims, proofs, objects, and witness chains in `evidence` when flags are too flat.
+- Put completed arcs in `phase_summaries` when they should still be remembered but no longer drive every turn.
 - Use `time` when several meaningful turns happen inside the same age.
 - Put all triggered event IDs in `event_history`.
 - Put each turn's story summary in `timeline`.
 - Keep `event_history` and `timeline` aligned. A manual ruling should still have a `manual_*` event id in both places.
 - If many turns share the same `age`, add `time` so the order stays playable.
 - Close stale `open_threads` when a later event resolves or supersedes them; the snapshot should show the current board, not every idea that ever appeared.
+
+Phase summaries are compact records of completed life segments:
+
+```json
+{
+  "id": "phase_exam_to_city",
+  "age": 18,
+  "summary": "The exam arc ended with a funded city-study track and a fragile promise to support the family.",
+  "closed_threads": ["exam_path", "leave_or_stay", "family_budget_contract"],
+  "carried_threads": ["city_life", "computer_path", "family_promise"],
+  "outcomes": ["admission_notice", "funded_city_study_track"]
+}
+```
+
+Use them at school transitions, career shifts, relationship resolutions, investigation conclusions, old-age endings, ascension, resurrection, and higher-realm starts. A phase summary should reduce active clutter, not hide unresolved problems.
 
 Relationship entries should be small but explicit:
 
@@ -173,6 +190,7 @@ Good checkpoints preserve:
 - `attribute_notes` for any exceptional or clamped attributes,
 - active relationships or factions,
 - active pressure clocks, evidence, flags, and open threads,
+- phase summaries for completed arcs,
 - the last 3-6 timeline beats or a short phase summary,
 - 2-4 next affordances.
 

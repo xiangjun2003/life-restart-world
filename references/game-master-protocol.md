@@ -109,6 +109,34 @@ For later-age starts, the compressed prologue gets the character to the playable
 
 For a 10-14 turn full-flow playtest, choose a phase endpoint such as "reach age 18", "survive the first career crisis", "resolve the investigation", or "attempt ascension". Allocate roughly 3-5 turns to entry pressure, 3-5 turns to complication, and 2-4 turns to consequence or transition.
 
+## Phase Closure
+
+Use phase closure when a life segment reaches a natural breakpoint: entering school, leaving home, finishing an investigation, surviving a first career crisis, ending a relationship arc, ordinary old age, ascension, resurrection, or higher-realm transition.
+
+Phase closure is not an ending unless the ledger says `terminal: true`. Its job is to keep the current board playable:
+
+1. Name what changed in the story.
+2. Close or archive resolved `open_threads`.
+3. Carry forward only active tensions, promises, relationships, evidence, and clocks.
+4. Add a `phase_summaries` item or a timeline item with a `manual_phase_*` event ID.
+5. Offer the next phase's affordances.
+
+Example:
+
+```json
+{
+  "id": "phase_school_to_city",
+  "age": 18,
+  "summary": "The county-school arc ends with a funded city-study track.",
+  "closed_threads": ["exam_path", "leave_or_stay", "family_budget_contract"],
+  "carried_threads": ["city_life", "computer_path", "family_promise"],
+  "outcomes": ["admission_notice", "family trust partly repaired"],
+  "next_phase": "city_student_life"
+}
+```
+
+After phase closure, do not keep old resolved threads in the visible snapshot. If they still matter, preserve them as flags, relationship notes, evidence, or `phase_summaries`.
+
 ## Turn Loop
 
 Each turn follows:
@@ -230,6 +258,13 @@ A checkpoint is a compact, copyable capsule, not a transcript and not a replacem
   "evidence": {"admission_notice": "not yet received"},
   "flags": ["teacher_noticed", "authorized_lab_time"],
   "open_threads": ["exam_path", "computer_path", "family_budget_contract"],
+  "phase_summaries": [
+    {
+      "id": "phase_county_childhood",
+      "age": 13,
+      "summary": "County childhood established teacher trust and family pressure; computer curiosity remains active."
+    }
+  ],
   "recent_timeline": [
     "14岁：秘密打工被家里察觉。",
     "15岁：用家庭预算谈判换来部分信任。",
@@ -244,6 +279,7 @@ When resuming from a checkpoint:
 - Treat the checkpoint as the current ledger seed, not as flavor text.
 - Do not restart from birth or re-roll talents unless the checkpoint says the life restarted.
 - Preserve age, time, relationships, clocks, evidence, flags, open threads, terminal status, and recent timeline facts.
+- Preserve phase summaries so old arcs do not need to be replayed.
 - Preserve `attribute_notes` when an attribute is outside the ordinary range or future deltas have been clamped.
 - If the checkpoint conflicts with nearby prose, state the ambiguity briefly and ask one clarification only when it blocks play.
 - After one resumed turn, update the ledger normally and keep event IDs/timeline auditable.
@@ -266,3 +302,5 @@ Endings can be:
 - voluntary arc closure.
 
 For ascension-like events, ask whether to summarize the human life or continue in the higher realm.
+
+When an ending is terminal, close or summarize most active threads. Leave only transition hooks such as inheritance, next-life choice, resurrection uncertainty, or higher-realm invitation. If play continues after a terminal-style transition, clear or update `terminal`, set the new realm/existence state, and start the next phase with a compact phase summary.
