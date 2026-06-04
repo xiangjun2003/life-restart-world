@@ -87,6 +87,8 @@ Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<loc
 
 Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed to another agent or resumed after a context break. It checks that compact checkpoint fields are expanded enough to reconstruct the state ledger.
 
+When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances` on the ledger. Use this for debug QA of action-entry hooks; do not expose the structured affordance objects to the player unless they ask for raw state.
+
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
 
 When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.

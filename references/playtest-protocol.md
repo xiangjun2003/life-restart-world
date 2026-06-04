@@ -33,7 +33,7 @@ For each playtest, record:
 - Each turn's user action, event or adjudication, state delta, and next affordances.
 - Whether action entries have distinct state hooks rather than cosmetic wording differences.
 - At least one selected-entry modification or free-form action, with `intent.source` preserved as `modified_entry` or `freeform` in notes.
-- Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
+- Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON. For live-turn affordance QA, include optional structured `next_affordances` in at least one mid-run state.
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
@@ -61,7 +61,7 @@ For skill iteration after a hosting-rule change, prefer a 3-agent full-flow set:
 - custom world run: no matching content pack, 10-14 playable turns, session world note plus state ledger hosting.
 - ledger stress run: same-age or same-week dense arc, 8-12 playable turns, at least one mid-run and one final validation.
 
-Each tester should record event IDs or `manual_*` rulings, run `scripts/validate_state.py` on at least one mid-run ledger and the endpoint ledger, and report whether the action entries felt like affordances rather than a locked menu. When using a checkpoint, prefer structured `next_affordances` objects if the next agent needs to preserve tags, targets, state hooks, or risk.
+Each tester should record event IDs or `manual_*` rulings, run `scripts/validate_state.py` on at least one mid-run ledger and the endpoint ledger, and report whether the action entries felt like affordances rather than a locked menu. Include structured `next_affordances` in at least one validated live state so duplicate labels, missing state hooks, or cosmetic variants are visible. When using a checkpoint, prefer structured `next_affordances` objects if the next agent needs to preserve tags, targets, state hooks, or risk.
 
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 

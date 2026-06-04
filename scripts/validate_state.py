@@ -39,6 +39,7 @@ REQUIRED_KEYS = [
 ATTRIBUTES = ["CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL"]
 LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
 EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
+AFFORDANCE_RISKS = {"low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
@@ -247,6 +248,97 @@ def check_string_list_value(value: Any, path: str, errors: list[str], warnings: 
             errors.append(f"{path}[{index}] must be a nonempty string")
 
 
+def affordance_label(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(item.get("label", ""))
+    return str(item)
+
+
+def affordance_signature(item: Any) -> str:
+    if not isinstance(item, dict):
+        return ""
+    hooks = item.get("state_hooks")
+    targets = item.get("targets")
+    if isinstance(hooks, list) and hooks:
+        return json.dumps(sorted(str(hook) for hook in hooks), ensure_ascii=False)
+    if isinstance(targets, list) and targets:
+        return json.dumps(sorted(str(target) for target in targets), ensure_ascii=False)
+    return ""
+
+
+def collect_known_hooks(state: dict[str, Any]) -> set[str]:
+    hooks = set(ATTRIBUTES)
+    for key in ["relationships", "pressure_clocks", "evidence"]:
+        value = state.get(key)
+        if isinstance(value, dict):
+            hooks.update(str(item) for item in value)
+    for key in ["flags", "open_threads", "talents"]:
+        value = state.get(key)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    hooks.add(item)
+                elif isinstance(item, dict):
+                    for id_key in ["id", "name"]:
+                        if item.get(id_key):
+                            hooks.add(str(item[id_key]))
+    world = state.get("world")
+    session_note = world.get("session_note") if isinstance(world, dict) else None
+    if isinstance(session_note, dict):
+        for key in ["state_axes", "evidence_tracks", "likely_choices", "terminal_paths"]:
+            value = session_note.get(key)
+            if isinstance(value, list):
+                hooks.update(str(item) for item in value if isinstance(item, str))
+        factions = session_note.get("factions")
+        if isinstance(factions, dict):
+            hooks.update(str(item) for item in factions)
+    return hooks
+
+
+def check_next_affordances(value: Any, known_hooks: set[str], errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(value, list):
+        errors.append("next_affordances must be a list when present")
+        return
+    if len(value) < 2 or len(value) > 4:
+        warnings.append(f"next_affordances has {len(value)} entries; live turns should preserve 2-4 playable affordances")
+    labels = [affordance_label(item).strip() for item in value]
+    duplicates = duplicate_values(labels)
+    if duplicates:
+        warnings.append(f"next_affordances contains duplicate labels: {duplicates}")
+    signatures: list[str] = []
+    structured_count = 0
+    for index, item in enumerate(value):
+        path = f"next_affordances[{index}]"
+        if isinstance(item, str):
+            if not item.strip():
+                errors.append(f"{path} must be nonempty")
+            continue
+        if not isinstance(item, dict):
+            errors.append(f"{path} must be a string or object")
+            continue
+        structured_count += 1
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            errors.append(f"{path}.label must be a nonempty string")
+        for key in ["tags", "targets", "state_hooks"]:
+            if key in item:
+                check_string_list_value(item[key], f"{path}.{key}", errors, warnings)
+        state_hooks = item.get("state_hooks")
+        if not state_hooks:
+            warnings.append(f"{path}.state_hooks is missing or empty; live affordances should point at ledger hooks")
+        elif isinstance(state_hooks, list) and not any(str(hook) in known_hooks for hook in state_hooks):
+            warnings.append(f"{path}.state_hooks do not reference known ledger hooks: {state_hooks}")
+        if not any(item.get(key) for key in ["tags", "targets", "state_hooks"]):
+            warnings.append(f"{path} should include tags, targets, or state_hooks for state-led play")
+        if item.get("risk") and str(item["risk"]) not in AFFORDANCE_RISKS:
+            warnings.append(f"{path}.risk is unusual: {item['risk']}")
+        signature = affordance_signature(item)
+        if signature:
+            signatures.append(signature)
+    if structured_count >= 2 and len(set(signatures)) < 2:
+        warnings.append("next_affordances do not expose at least two distinct state hook or target sets; avoid cosmetic variants")
+
+
 def check_phase_summary_consistency(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     phase_summaries = state.get("phase_summaries")
     if not isinstance(phase_summaries, list):
@@ -312,6 +404,10 @@ def check_session_note_pressure_clocks(state: dict[str, Any], note: dict[str, An
         status = str(state_clock.get("status", "")).lower() if isinstance(state_clock, dict) else ""
         if status in INACTIVE_CLOCK_STATUSES:
             warnings.append(f"{path} mirrors a {status} clock; move resolved pressure to phase_summaries or remove it from the active session note")
+        if isinstance(state_clock, dict):
+            for key in ["stage", "limit"]:
+                if key in clock and key in state_clock and is_int_like(clock[key]) and is_int_like(state_clock[key]) and int(clock[key]) != int(state_clock[key]):
+                    warnings.append(f"{path}.{key}={clock[key]} differs from state.pressure_clocks.{clock_id}.{key}={state_clock[key]}; state ledger is the source of truth")
 
 
 def has_real_content_pack(world: dict[str, Any]) -> bool:
@@ -488,6 +584,8 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
     check_relationships(state, errors, warnings)
     check_pressure_clocks(state, errors, warnings)
     check_optional_extensions(state, errors, warnings)
+    if "next_affordances" in state:
+        check_next_affordances(state["next_affordances"], collect_known_hooks(state), errors, warnings)
     check_phase_summary_consistency(state, errors, warnings)
     check_timeline_and_history(state, errors, warnings)
     check_ledger_density(state, warnings)
@@ -501,6 +599,9 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) == 2 and argv[1] in {"-h", "--help"}:
+        print("Usage: validate_state.py STATE_JSON_PATH_OR_INLINE_OR_-")
+        return 0
     if len(argv) != 2:
         print("Usage: validate_state.py STATE_JSON_PATH_OR_INLINE_OR_-", file=sys.stderr)
         return 2

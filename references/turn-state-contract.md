@@ -137,6 +137,8 @@ Player-facing entries can be short natural-language lines, but each one should h
 
 Do not show this JSON during ordinary play. Use it as a design check and as optional checkpoint detail when another agent must resume the same board.
 
+During playtests or debug handoff, you may store these objects as optional `next_affordances` on the state ledger before running `scripts/validate_state.py`. Ordinary live play does not need to show or persist them every turn, but the QA field helps catch duplicate labels, missing state hooks, and cosmetic variants.
+
 Good spread:
 
 - a steady or conservative action,
@@ -147,6 +149,8 @@ Good spread:
 Avoid four cosmetic variants of the same plan. Each entry should imply a different cost, ally, risk, or future thread.
 
 Each entry should touch at least one current or plausible ledger hook: an attribute under pressure, a relationship, a pressure clock, evidence, a flag, an open thread, the realm, or terminal/transition state. If an entry would not change or test the state in any way, rewrite it as scene color or omit it.
+
+Use stable hook names. Good `state_hooks` usually reference existing attribute keys, relationship IDs, pressure clock IDs, evidence IDs, flags, open threads, or `world.session_note.state_axes`. A future hook is allowed only when the action is explicitly trying to open that thread or create that evidence; if validation warns about it, make sure the next delta creates or rejects that hook plainly.
 
 ## Turn Checklist
 

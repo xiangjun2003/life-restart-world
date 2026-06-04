@@ -105,6 +105,31 @@ def check_attributes(value: Any, errors: list[str], warnings: list[str]) -> None
             warnings.append(f"attributes.{attr} is not a standard attribute")
 
 
+def has_attribute_note(checkpoint: dict[str, Any], attr: str) -> bool:
+    notes = checkpoint.get("attribute_notes")
+    if not isinstance(notes, dict):
+        return False
+    note = notes.get(attr)
+    if isinstance(note, str):
+        return bool(note.strip())
+    if isinstance(note, dict):
+        return bool(note.get("note") or note.get("reason") or note.get("future_delta_policy"))
+    return False
+
+
+def check_attribute_ranges(checkpoint: dict[str, Any], warnings: list[str]) -> None:
+    attrs = checkpoint.get("attributes")
+    if not isinstance(attrs, dict):
+        return
+    existence_state = str(checkpoint.get("existence_state", "mortal"))
+    for attr, raw_value in attrs.items():
+        if attr not in ATTRIBUTES or not is_int_like(raw_value):
+            continue
+        value = int(raw_value)
+        if existence_state in {"mortal", "resurrected"} and (value < 0 or value > 12) and not has_attribute_note(checkpoint, attr):
+            warnings.append(f"attributes.{attr}={value} is outside the ordinary human range; include attribute_notes or clamp future deltas")
+
+
 def has_real_content_pack(value: dict[str, Any]) -> bool:
     content_pack = value.get("content_pack")
     if not isinstance(content_pack, str):
@@ -155,6 +180,11 @@ def check_world(value: Any, active_clocks: dict[str, Any], errors: list[str], wa
                 status = str(clock.get("status", "")).lower() if isinstance(clock, dict) else ""
                 if status in INACTIVE_CLOCK_STATUSES:
                     warnings.append(f"world.session_note.pressure_clocks.{clock_id} mirrors a {status} clock; move resolved pressure to phase_summaries or remove it from the active session note")
+                if isinstance(clock, dict):
+                    note_clock = note_clocks[clock_id]
+                    for key in ["stage", "limit"]:
+                        if isinstance(note_clock, dict) and key in note_clock and key in clock and is_int_like(note_clock[key]) and is_int_like(clock[key]) and int(note_clock[key]) != int(clock[key]):
+                            warnings.append(f"world.session_note.pressure_clocks.{clock_id}.{key}={note_clock[key]} differs from pressure_clocks.{clock_id}.{key}={clock[key]}; checkpoint ledger is the source of truth")
 
 
 def relationship_score(entry: Any) -> Any:
@@ -289,7 +319,42 @@ def affordance_label(item: Any) -> str:
     return str(item)
 
 
-def check_next_affordances(value: Any, errors: list[str], warnings: list[str]) -> None:
+def affordance_signature(item: Any) -> str:
+    if not isinstance(item, dict):
+        return ""
+    hooks = item.get("state_hooks")
+    targets = item.get("targets")
+    if isinstance(hooks, list) and hooks:
+        return json.dumps(sorted(str(hook) for hook in hooks), ensure_ascii=False)
+    if isinstance(targets, list) and targets:
+        return json.dumps(sorted(str(target) for target in targets), ensure_ascii=False)
+    return ""
+
+
+def collect_known_hooks(checkpoint: dict[str, Any]) -> set[str]:
+    hooks = set(ATTRIBUTES)
+    for key in ["relationships", "pressure_clocks", "evidence"]:
+        value = checkpoint.get(key)
+        if isinstance(value, dict):
+            hooks.update(str(item) for item in value)
+    for key in ["flags", "open_threads", "talents"]:
+        value = checkpoint.get(key)
+        if isinstance(value, list):
+            hooks.update(str(item) for item in value if isinstance(item, str))
+    world = checkpoint.get("world")
+    session_note = world.get("session_note") if isinstance(world, dict) else None
+    if isinstance(session_note, dict):
+        for key in ["state_axes", "evidence_tracks", "likely_choices", "terminal_paths"]:
+            value = session_note.get(key)
+            if isinstance(value, list):
+                hooks.update(str(item) for item in value if isinstance(item, str))
+        factions = session_note.get("factions")
+        if isinstance(factions, dict):
+            hooks.update(str(item) for item in factions)
+    return hooks
+
+
+def check_next_affordances(value: Any, known_hooks: set[str], errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, list):
         errors.append("next_affordances must be a list")
         return
@@ -299,6 +364,8 @@ def check_next_affordances(value: Any, errors: list[str], warnings: list[str]) -
     duplicates = duplicate_values(labels)
     if duplicates:
         warnings.append(f"next_affordances contains duplicate labels: {duplicates}")
+    signatures: list[str] = []
+    structured_count = 0
     for index, item in enumerate(value):
         path = f"next_affordances[{index}]"
         if isinstance(item, str):
@@ -308,16 +375,27 @@ def check_next_affordances(value: Any, errors: list[str], warnings: list[str]) -
         if not isinstance(item, dict):
             errors.append(f"{path} must be a string or object")
             continue
+        structured_count += 1
         label = item.get("label")
         if not isinstance(label, str) or not label.strip():
             errors.append(f"{path}.label must be a nonempty string")
         for key in ["tags", "targets", "state_hooks"]:
             if key in item:
                 check_string_list(item[key], f"{path}.{key}", errors, warnings)
+        state_hooks = item.get("state_hooks")
+        if not state_hooks:
+            warnings.append(f"{path}.state_hooks is missing or empty; handoff affordances should point at ledger hooks")
+        elif isinstance(state_hooks, list) and not any(str(hook) in known_hooks for hook in state_hooks):
+            warnings.append(f"{path}.state_hooks do not reference known ledger hooks: {state_hooks}")
         if not any(item.get(key) for key in ["tags", "targets", "state_hooks"]):
             warnings.append(f"{path} should include tags, targets, or state_hooks for handoff fidelity")
         if item.get("risk") and str(item["risk"]) not in AFFORDANCE_RISKS:
             warnings.append(f"{path}.risk is unusual: {item['risk']}")
+        signature = affordance_signature(item)
+        if signature:
+            signatures.append(signature)
+    if structured_count >= 2 and len(set(signatures)) < 2:
+        warnings.append("next_affordances do not expose at least two distinct state hook or target sets; avoid cosmetic variants")
 
 
 def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
@@ -354,6 +432,7 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     if "world" in checkpoint:
         check_world(checkpoint.get("world"), active_clocks, errors, warnings)
     check_attributes(checkpoint.get("attributes"), errors, warnings)
+    check_attribute_ranges(checkpoint, warnings)
     for key in LIST_KEYS:
         if key not in {"phase_summaries", "recent_timeline"}:
             check_string_list(checkpoint.get(key), key, errors, warnings)
@@ -362,12 +441,15 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
     check_evidence(checkpoint.get("evidence"), errors, warnings)
     check_phase_summaries(checkpoint.get("phase_summaries"), checkpoint.get("open_threads"), errors, warnings)
     check_recent_timeline(checkpoint.get("recent_timeline"), errors, warnings)
-    check_next_affordances(checkpoint.get("next_affordances"), errors, warnings)
+    check_next_affordances(checkpoint.get("next_affordances"), collect_known_hooks(checkpoint), errors, warnings)
 
     return {"ok": not errors, "errors": errors, "warnings": warnings}
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) == 2 and argv[1] in {"-h", "--help"}:
+        print("Usage: validate_checkpoint.py CHECKPOINT_JSON_PATH_OR_INLINE_OR_-")
+        return 0
     if len(argv) != 2:
         print("Usage: validate_checkpoint.py CHECKPOINT_JSON_PATH_OR_INLINE_OR_-", file=sys.stderr)
         return 2

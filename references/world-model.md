@@ -215,7 +215,11 @@ Compact checkpoint display is allowed, but resumed play must expand back to the 
 
 The label is what a player can read; the other fields help the next agent preserve intent and state pressure without treating the event library as an engine.
 
+For live-turn QA, `next_affordances` can also appear as an optional current-board field on the full state ledger. It is not protagonist history; replace it each turn or omit it outside debug, playtest, and handoff contexts.
+
 If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
+
+If a live clock appears in both `world.session_note.pressure_clocks` and top-level `pressure_clocks`, keep `stage` and `limit` synchronized. The top-level ledger is authoritative; the session note is context, not a second counter.
 
 Use `scripts/validate_checkpoint.py` for handoff capsules that are meant to be resumed by another agent. It checks the portable checkpoint shape; after resuming into a full ledger, use `scripts/validate_state.py`.
 
