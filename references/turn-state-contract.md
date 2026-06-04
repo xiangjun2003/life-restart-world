@@ -94,6 +94,8 @@ Every durable story consequence must appear in the delta.
 
 Prefer small deltas. A vivid scene does not need many flags, but any fact that changes future play must be tracked.
 
+As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
+
 ## State Snapshot
 
 After applying the delta, show a compact snapshot:

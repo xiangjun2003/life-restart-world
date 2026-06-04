@@ -223,6 +223,7 @@ def parse_events(path: Path) -> list[dict[str, Any]]:
             "branches": branches,
             "terminal": terminal,
             "terminal_reason": "Life force fell below survival." if terminal else None,
+            "tags": ["upstream_event"],
             "narrative_seed": str(first(record, "event", "")),
             "choices": [choice for choice in [event_to_choice(first(record, "postEvent"))] if choice],
             "source": "VickScarlet/lifeRestart MIT",
@@ -310,6 +311,8 @@ def build_pack(source: Path, locale: str) -> dict[str, Any]:
         "title": f"Life Restart upstream converted pack ({locale})",
         "license": "MIT; preserve references/lifeRestart-LICENSE.md and upstream attribution.",
         "source_repository": "https://github.com/VickScarlet/lifeRestart",
+        "compatible_realms": ["human_world"],
+        "compatible_world_tags": ["classic", "upstream", "life-restart"],
         "attributes": {
             "CHR": "颜值 / charm",
             "INT": "智力 / intelligence",

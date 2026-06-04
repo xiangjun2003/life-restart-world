@@ -4,7 +4,7 @@
   "title": "Classic Lite Life Restart World",
   "license": "Original seed content for this skill. Inspired by life-restart mechanics; not copied from upstream event prose.",
   "compatible_realms": ["human_world", "higher_realm"],
-  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "admission", "scholarship", "cultivation"],
+  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "admission", "scholarship", "investigation", "ethics", "cultivation"],
   "attributes": {
     "CHR": "presence, charm, appearance",
     "INT": "learning and reasoning",
@@ -286,6 +286,123 @@
       "choices": ["Verify only public facts", "Ask a trusted teacher for boundaries", "Drop the matter and protect exam focus"]
     },
     {
+      "id": "public_fee_verification",
+      "title": "公开栏核验",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "flags?[anonymous_fee_notes]",
+      "tags": ["education", "investigation", "evidence", "ethics", "school"],
+      "effects": {"SPR": -1},
+      "set_flags": ["public_fee_verification"],
+      "open_threads": ["evidence_boundary"],
+      "evidence": {
+        "posted_fee_notice": {
+          "claim": "Public fee notices can be compared against the anonymous notes without naming classmates.",
+          "status": "public_record_checked",
+          "holders": ["self", "school_notice_board"],
+          "risk": "low"
+        }
+      },
+      "pressure_clocks": {
+        "evidence_gap": {"delta": -1, "limit": 5, "meaning": "公开证据缺口"},
+        "administrative_attention": {"delta": 1, "limit": 4, "meaning": "学校行政关注风险"}
+      },
+      "narrative_seed": "Instead of chasing rumors, the student checks public notices, dates, and receipt language where anyone could verify them.",
+      "choices": ["Keep checking only public sources", "Ask a trusted teacher for boundaries", "Pause and protect exam focus"]
+    },
+    {
+      "id": "teacher_boundary_counsel",
+      "title": "向老师问边界",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[anonymous_fee_notes]&flags?[teacher_noticed]",
+      "tags": ["education", "investigation", "evidence", "ethics", "mentor"],
+      "effects": {"SPR": 1},
+      "set_flags": ["teacher_boundary_guardrail"],
+      "open_threads": ["evidence_boundary"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "sets boundaries so the student can avoid rumor, exposure, and exam self-sabotage"}
+      },
+      "evidence": {
+        "teacher_boundary_advice": {
+          "claim": "A trusted teacher advises checking only public facts and avoiding private names or documents.",
+          "status": "witnessed_guidance",
+          "holders": ["self", "mentor_teacher"],
+          "risk": "low"
+        }
+      },
+      "pressure_clocks": {
+        "administrative_attention": {"delta": -1, "limit": 4, "meaning": "学校行政关注风险"},
+        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
+      },
+      "narrative_seed": "The teacher does not solve the problem, but gives the investigation a boundary: public facts, no names, and no sacrifice of the exam.",
+      "choices": ["Follow the boundary strictly", "Ask the teacher to mediate", "Seal the notes until after exams"]
+    },
+    {
+      "id": "anonymized_fee_matrix",
+      "title": "匿名两列表",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "flags?[public_fee_verification]|flags?[teacher_boundary_guardrail]",
+      "tags": ["education", "investigation", "evidence", "ethics"],
+      "effects": {"INT": 1, "SPR": -1},
+      "set_flags": ["anonymized_fee_matrix"],
+      "evidence": {
+        "fee_difference_matrix": {
+          "claim": "An anonymized two-column comparison suggests a fee difference worth formal clarification.",
+          "status": "anonymized_summary",
+          "holders": ["self"],
+          "risk": "medium"
+        }
+      },
+      "pressure_clocks": {
+        "evidence_gap": {"delta": -1, "limit": 5, "meaning": "公开证据缺口"},
+        "administrative_attention": {"delta": 1, "limit": 4, "meaning": "学校行政关注风险"},
+        "burnout_risk": {"delta": 1, "limit": 4, "meaning": "考季透支风险"}
+      },
+      "narrative_seed": "The student turns scattered notes into an anonymized matrix: useful enough to ask a question, risky enough to require restraint.",
+      "choices": ["Give the packet to the teacher", "Ask class committee for a formal notice", "Stop for one night and study"]
+    },
+    {
+      "id": "teacher_mediation_request",
+      "title": "请老师代问",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[anonymized_fee_matrix]&flags?[teacher_boundary_guardrail]",
+      "tags": ["education", "investigation", "evidence", "ethics", "mentor", "school"],
+      "effects": {"WIL": 1, "SPR": 1},
+      "set_flags": ["school_fee_mediated"],
+      "close_threads": ["school_fee_pressure", "administrative_attention", "evidence_boundary"],
+      "open_threads": ["school_fee_followup"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "takes the formal risk of asking on the student's behalf"},
+        "school_admin": {"delta": -1, "note": "notices the question but receives it through an adult channel"}
+      },
+      "evidence": {
+        "mediation_packet": {
+          "claim": "The anonymized packet was handed to a trusted teacher for formal clarification.",
+          "status": "handed_to_mediator",
+          "holders": ["self", "mentor_teacher"],
+          "risk": "medium"
+        }
+      },
+      "pressure_clocks": {
+        "administrative_attention": {"close": true},
+        "evidence_gap": {"close": true},
+        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
+      },
+      "narrative_seed": "The student chooses an adult channel: not public victory, but a cleaner chain of custody and less direct exposure.",
+      "choices": ["Wait for the teacher's reply", "Return attention to exams", "Tell family only the safe outline"]
+    },
+    {
       "id": "school_computer_room_access",
       "title": "机房边角时间",
       "age_range": [13, 18],
@@ -555,6 +672,24 @@
       "choices": ["Apologize honestly", "Keep distance", "Choose ambition over repair"]
     },
     {
+      "id": "family_repair_visit",
+      "title": "归家修补",
+      "age_range": [30, 70],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "flags?[relationship_reckoning]",
+      "tags": ["relationship", "family", "repair", "regret"],
+      "effects": {"SPR": 1},
+      "set_flags": ["family_repair_attempt"],
+      "open_threads": ["family_care_promise"],
+      "relationships": {
+        "family": {"delta": 1, "note": "hears a real apology and watches whether it becomes repeated care"}
+      },
+      "narrative_seed": "Repair does not erase the years away; it begins with a visit, an apology, and a practical promise that can be kept.",
+      "choices": ["Keep returning steadily", "Offer practical support", "Admit the old ambition still pulls"]
+    },
+    {
       "id": "wandering_adept_rumor",
       "title": "游方传闻",
       "age_range": [13, 29],
@@ -603,6 +738,42 @@
       },
       "narrative_seed": "Long life stops feeling like escape and starts feeling like a test of direction.",
       "choices": ["Endure the bottleneck", "Seek a dangerous breakthrough", "Return to old human ties"]
+    },
+    {
+      "id": "decades_tempering_routine",
+      "title": "数十年打磨",
+      "age_range": [80, 300],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "existence_state=cultivator&flags?[found_hidden_manual]",
+      "tags": ["cultivation", "longevity", "discipline", "preparation"],
+      "effects": {"STR": 1, "SPR": -1},
+      "set_flags": ["tempering_routine"],
+      "open_threads": ["ascension_threshold"],
+      "pressure_clocks": {
+        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      },
+      "narrative_seed": "The first decades of practice are not spectacle but repeated restraint: diet, breath, recovery, and refusing shortcuts.",
+      "choices": ["Keep the slow routine", "Look for a safer teacher", "Risk a harder breakthrough"]
+    },
+    {
+      "id": "breakthrough_preparation",
+      "title": "破关前夜",
+      "age_range": [100, 500],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "existence_state=cultivator&flags?[tempering_routine]",
+      "tags": ["cultivation", "ascension", "risk", "preparation"],
+      "effects": {"STR": 1, "WIL": 1, "SPR": -1},
+      "set_flags": ["breakthrough_prepared"],
+      "open_threads": ["ascension_threshold"],
+      "pressure_clocks": {
+        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      },
+      "narrative_seed": "A possible breakthrough approaches, but the preparation is practical: settle old ties, conserve strength, and decide what risk is acceptable.",
+      "choices": ["Wait for the right timing", "Seek outside help", "Force the gate and accept the cost"]
     },
     {
       "id": "ascension_gate",
@@ -666,16 +837,16 @@
     "0": [{"event_id": "birth_county", "weight": 20}],
     "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
     "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "primary_school_routine", "weight": 6}, {"event_id": "playground_confidence", "weight": 5}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}, {"event_id": "public_fee_verification", "weight": 4}, {"event_id": "teacher_boundary_counsel", "weight": 5}, {"event_id": "anonymized_fee_matrix", "weight": 4}, {"event_id": "teacher_mediation_request", "weight": 5}],
     "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "family_budget_conversation", "weight": 7}, {"event_id": "computer_shop_barter", "weight": 5}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "family_computer_schedule_contract", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
     "17-20": [{"event_id": "admission_notice_transition", "weight": 8}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],
     "24-40": [{"event_id": "small_success", "weight": 9}],
-    "28-55": [{"event_id": "relationship_reckoning", "weight": 8}],
+    "28-55": [{"event_id": "relationship_reckoning", "weight": 8}, {"event_id": "family_repair_visit", "weight": 5}],
     "13-29": [{"event_id": "wandering_adept_rumor", "weight": 4}],
     "30-80": [{"event_id": "hidden_manual", "weight": 3}],
-    "90-300": [{"event_id": "cultivation_bottleneck", "weight": 6}],
-    "80-500": [{"event_id": "ascension_gate", "weight": 4}, {"event_id": "higher_realm_start", "weight": 10}],
+    "90-300": [{"event_id": "cultivation_bottleneck", "weight": 6}, {"event_id": "decades_tempering_routine", "weight": 5}],
+    "80-500": [{"event_id": "breakthrough_preparation", "weight": 4}, {"event_id": "ascension_gate", "weight": 4}, {"event_id": "higher_realm_start", "weight": 10}],
     "70-105": [{"event_id": "ordinary_old_age", "weight": 12}]
   }
 }

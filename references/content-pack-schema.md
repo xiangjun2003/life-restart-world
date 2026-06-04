@@ -4,6 +4,18 @@ Content packs are JSON files. They are data, not prompts. The Game Master uses t
 
 Top-level compatibility fields help tests expose mismatches. They do not force a custom world to use the pack.
 
+## Validation
+
+Run the lightweight integrity checker after editing, importing, or selecting a pack for script-assisted tests:
+
+```bash
+python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
+```
+
+The checker reports duplicate IDs, age-pool references to missing events, malformed age ranges, bad field types, evidence without usable holders, and similar pack problems. Treat `errors` as test blockers. Treat `warnings` as review prompts that may still be acceptable for imported upstream data or intentionally sparse reference material.
+
+Passing validation does not make the pack a canonical engine. The Game Master still maintains the state ledger and may manually adjudicate custom worlds when no matching event material exists.
+
 ## Top-Level Shape
 
 ```json

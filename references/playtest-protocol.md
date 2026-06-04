@@ -35,6 +35,7 @@ For each playtest, record:
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
+- When editing, importing, or selecting a content pack for script-assisted tests, record `scripts/validate_content_pack.py` output before play begins.
 - For ledger stress tests, validate at least one mid-run state as well as the final state; final cleanup can hide whether the middle of play became hard to continue.
 - Any mismatch between the requested world and available event packs.
 - Any state drift, missing relationship mechanics, unclear instruction, or safety concern.
@@ -47,7 +48,7 @@ Use short needle tests when checking a specific rule or script behavior.
 - 10-14 turns: good for validating the actual play loop inside one life phase or one major arc.
 - Full life: only when the skill is already stable enough, or when the goal is explicitly to test long-form pacing, endings, ascension, resurrection, or inheritance.
 
-For longer tests, ask the tester to strictly use the skill, read only the references needed for play, and stop at a named phase endpoint. The endpoint should be part of the prompt so the transcript shows whether pacing stayed playable.
+For longer tests, ask the tester to strictly call this skill, read only the references needed for play, preserve the full transcript, and stop at a named phase endpoint. The endpoint should be part of the prompt so the transcript shows whether pacing stayed playable.
 
 For skill iteration after a hosting-rule change, prefer a 3-agent full-flow set:
 
@@ -55,7 +56,9 @@ For skill iteration after a hosting-rule change, prefer a 3-agent full-flow set:
 - custom world run: no matching content pack, 10-14 playable turns, session world note plus state ledger hosting.
 - ledger stress run: same-age or same-week dense arc, 8-12 playable turns, at least one mid-run and one final validation.
 
-Each tester should strictly call this skill, preserve the full transcript, record event IDs or `manual_*` rulings, and report whether the action entries felt like affordances rather than a locked menu.
+Each tester should record event IDs or `manual_*` rulings, run `scripts/validate_state.py` on at least one mid-run ledger and the endpoint ledger, and report whether the action entries felt like affordances rather than a locked menu.
+
+When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 
 ## Good Failure Reports
 
