@@ -1,0 +1,4 @@
+interface:
+  display_name: "Life Restart World"
+  short_description: "Natural-language life simulation world"
+  default_prompt: "Use $life-restart-world to start a custom natural-language life simulation."
