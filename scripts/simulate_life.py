@@ -313,20 +313,24 @@ def age_matches(event: dict[str, Any], age: int) -> bool:
     return True
 
 
-def pool_weight(pack: dict[str, Any], event_id: str, age: int) -> int | None:
+def matching_pool_entries(pack: dict[str, Any], age: int) -> dict[str, int]:
+    matched: dict[str, int] = {}
     pools = pack.get("age_pools", {})
     for key, items in pools.items():
         if "-" in str(key):
             low, high = [int(x) for x in str(key).split("-", 1)]
-            matched = low <= age <= high
+            is_match = low <= age <= high
         else:
-            matched = int(key) == age
-        if not matched:
+            is_match = int(key) == age
+        if not is_match:
             continue
         for item in items:
-            if str(item.get("event_id")) == str(event_id):
-                return int(item.get("weight", 1))
-    return None
+            matched[str(item.get("event_id"))] = int(item.get("weight", 1))
+    return matched
+
+
+def pool_weight(pack: dict[str, Any], event_id: str, age: int) -> int | None:
+    return matching_pool_entries(pack, age).get(str(event_id))
 
 
 def action_relevance(event: dict[str, Any], intent: dict[str, Any]) -> float:
@@ -342,19 +346,25 @@ def collect_candidates(pack: dict[str, Any], state: dict[str, Any], intent: dict
     age = int(state.get("age", 0))
     realm = state.get("realm", "human_world")
     history = set(str(item) for item in state.get("event_history", []))
+    pool_entries = matching_pool_entries(pack, age)
+    has_age_pool = bool(pack.get("age_pools"))
     candidates = []
     for raw in pack.get("events", []):
         event = copy.deepcopy(raw)
+        event_id = str(event.get("id"))
+        authored_age = "age" in event or "age_range" in event
+        if has_age_pool and event_id not in pool_entries and not authored_age:
+            continue
         event_realm = event.get("realm", "any")
         if event_realm not in {"any", realm, None}:
             continue
         if not age_matches(event, age):
-            pooled = pool_weight(pack, str(event.get("id")), age)
+            pooled = pool_entries.get(event_id)
             if pooled is None:
                 continue
         else:
-            pooled = pool_weight(pack, str(event.get("id")), age)
-        if not event.get("repeatable", False) and str(event.get("id")) in history:
+            pooled = pool_entries.get(event_id)
+        if not event.get("repeatable", False) and event_id in history:
             continue
         if not eval_condition(state, event.get("include")):
             continue
@@ -506,10 +516,13 @@ def create_state(pack: dict[str, Any], args: argparse.Namespace) -> dict[str, An
     }
     for talent in talents:
         apply_effects(state, talent.get("effects"))
-    birth_events = [
-        event for event in pack.get("events", [])
-        if event.get("age") == 0 and eval_condition(state, event.get("include"))
-    ]
+    birth_pool = matching_pool_entries(pack, 0)
+    birth_events = []
+    for event in pack.get("events", []):
+        event_id = str(event.get("id"))
+        if event.get("age") == 0 or event_id in birth_pool:
+            if eval_condition(state, event.get("include")):
+                birth_events.append(event)
     if birth_events:
         apply_event(state, copy.deepcopy(birth_events[0]), infer_action("birth"))
     return state
