@@ -97,6 +97,55 @@
       "choices": ["Rest and recover slowly", "Become quieter and more observant", "Push yourself too early"]
     },
     {
+      "id": "childhood_observation",
+      "title": "过早会看脸色",
+      "age_range": [2, 8],
+      "realm": "human_world",
+      "weight": 7,
+      "repeatable": false,
+      "tags": ["family", "observation", "money"],
+      "effects": {"WIL": 1, "SPR": -1},
+      "set_flags": ["early_family_observer"],
+      "open_threads": ["family_money_pressure"],
+      "relationships": {
+        "family": {"delta": 1, "note": "the child learns the household mood before understanding its causes"}
+      },
+      "narrative_seed": "Before the character can name poverty, they learn to read pauses at the dinner table and numbers whispered at night.",
+      "choices": ["Stay quiet and observe", "Ask where the money goes", "Try to become less of a burden"]
+    },
+    {
+      "id": "preschool_self_management",
+      "title": "小小自管",
+      "age_range": [2, 6],
+      "realm": "human_world",
+      "weight": 6,
+      "repeatable": false,
+      "tags": ["education", "family", "observation"],
+      "effects": {"WIL": 1},
+      "set_flags": ["preschool_self_management"],
+      "open_threads": ["early_school_readiness"],
+      "relationships": {
+        "family": {"delta": 1, "note": "notices the child trying to help before being asked"}
+      },
+      "narrative_seed": "In the quiet years before formal pressure arrives, the character learns to manage small tasks and read simple words from whatever paper is nearby.",
+      "choices": ["Keep learning quietly", "Help with small chores", "Ask for harder books"]
+    },
+    {
+      "id": "screen_curiosity",
+      "title": "屏幕那头的光",
+      "age_range": [5, 12],
+      "realm": "human_world",
+      "weight": 5,
+      "repeatable": false,
+      "include": "INT>=6|TLT?[early_reader]",
+      "tags": ["technology", "observation", "education"],
+      "effects": {"INT": 1, "SPR": 1},
+      "set_flags": ["early_screen_curiosity"],
+      "open_threads": ["computer_curiosity"],
+      "narrative_seed": "A borrowed screen, a shop window, or a school corner machine turns curiosity into a private direction.",
+      "choices": ["Remember every detail", "Ask an adult what computers can do", "Look for books or discarded parts"]
+    },
+    {
       "id": "childhood_spirit_sign",
       "title": "童年异兆",
       "age_range": [1, 12],
@@ -122,6 +171,7 @@
       "tags": ["education", "mentor"],
       "effects": {"INT": 1, "SPR": 1},
       "set_flags": ["teacher_noticed"],
+      "close_threads": ["early_school_readiness"],
       "open_threads": ["exam_path"],
       "relationships": {
         "mentor_teacher": {"delta": 1, "note": "recognizes unusual effort and expects discipline"}
@@ -131,6 +181,45 @@
       },
       "narrative_seed": "A teacher notices unusual effort and quietly opens a door.",
       "choices": ["Lean into study", "Hide the attention from family pressure", "Ask the teacher for a harder path"]
+    },
+    {
+      "id": "steady_student_reputation",
+      "title": "稳稳被信任",
+      "age_range": [8, 13],
+      "realm": "human_world",
+      "weight": 7,
+      "repeatable": false,
+      "include": "flags?[teacher_noticed]",
+      "tags": ["education", "mentor", "relationship"],
+      "effects": {"INT": 1, "SPR": -1},
+      "set_flags": ["steady_student_reputation"],
+      "open_threads": ["county_school_track"],
+      "relationships": {
+        "mentor_teacher": {"delta": 1, "note": "trusts the student because effort stays quiet and consistent"}
+      },
+      "pressure_clocks": {
+        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
+      },
+      "narrative_seed": "Talent becomes reputation only after a long stretch of ordinary discipline: homework, restraint, and not making trouble.",
+      "choices": ["Keep the steady path", "Ask for more guidance", "Talk about school costs"]
+    },
+    {
+      "id": "classmate_friendship",
+      "title": "同伴的光",
+      "age_range": [10, 18],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "SPR<=3",
+      "tags": ["relationship", "education", "friend"],
+      "effects": {"SPR": 2, "CHR": 1},
+      "set_flags": ["classmate_friendship"],
+      "open_threads": ["peer_support"],
+      "relationships": {
+        "close_classmate": {"delta": 2, "note": "shares jokes, notes, and a little breathing room inside pressure"}
+      },
+      "narrative_seed": "A classmate notices the exhaustion behind the diligence and makes school feel less like a corridor walked alone.",
+      "choices": ["Accept the friendship", "Keep distance to focus", "Share a small secret"]
     },
     {
       "id": "school_computer_room_access",
@@ -143,6 +232,7 @@
       "tags": ["education", "technology", "mentor"],
       "effects": {"INT": 1, "SPR": 1},
       "set_flags": ["authorized_lab_time"],
+      "close_threads": ["computer_curiosity"],
       "open_threads": ["computer_access"],
       "relationships": {
         "mentor_teacher": {"delta": 1, "note": "offers supervised access in exchange for discipline"}
@@ -202,6 +292,7 @@
       "tags": ["technology", "money", "choice"],
       "effects": {"MNY": -1, "INT": 1, "SPR": 1},
       "set_flags": ["used_computer_opportunity"],
+      "close_threads": ["computer_access", "computer_curiosity"],
       "open_threads": ["computer_path"],
       "narrative_seed": "A used machine or shared computer becomes possible, but the price is not only money.",
       "choices": ["Spend the saved money", "Ask for help openly", "Wait and keep practicing elsewhere"]
@@ -235,6 +326,7 @@
       "tags": ["city", "career", "loneliness"],
       "effects": {"MNY": -1, "INT": 1, "SPR": -1},
       "set_flags": ["left_hometown"],
+      "close_threads": ["leave_or_stay"],
       "open_threads": ["city_life"],
       "narrative_seed": "Leaving home creates a wider map and a sharper loneliness.",
       "choices": ["Build a career path", "Find allies", "Send money home"]
@@ -380,9 +472,9 @@
   ],
   "age_pools": {
     "0": [{"event_id": "birth_county", "weight": 20}],
-    "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}],
+    "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
+    "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "classmate_friendship", "weight": 4}],
     "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],
     "24-40": [{"event_id": "small_success", "weight": 9}],

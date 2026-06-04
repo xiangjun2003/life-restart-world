@@ -55,6 +55,18 @@ This prologue can be manually adjudicated. If a script cannot create such a star
 
 Use `prologue-protocol.md` when the start point carries many implied facts, relationships, or prior choices.
 
+## Pacing
+
+Pace is a promise about playable texture, not a fixed age increment.
+
+- `细腻`: Use same-age or same-year turns when the situation is dense: exams, family conflict, investigations, romance, first job, sect trial, illness, or a moral crisis.
+- `标准`: Let ordinary childhood and school years advance by about 1 year per turn, then use same-age turns for crises and 1-3 year jumps for stable adult consolidation.
+- `速通`: Compress quiet periods aggressively, but still pause for irreversible decisions, terminal events, ascension, resurrection, or world-transition moments.
+
+For later-age starts, the compressed prologue gets the character to the playable moment; it should not consume the interactive drama. Once play begins, spend several turns inside the current phase before jumping to the next life stage unless the user asks to fast-forward.
+
+For a 10-14 turn full-flow playtest, choose a phase endpoint such as "reach age 18", "survive the first career crisis", "resolve the investigation", or "attempt ascension". Allocate roughly 3-5 turns to entry pressure, 3-5 turns to complication, and 2-4 turns to consequence or transition.
+
 ## Turn Loop
 
 Each turn follows:

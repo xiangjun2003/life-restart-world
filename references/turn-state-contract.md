@@ -51,6 +51,8 @@ Resolve from these inputs, in order:
 
 The chosen event material is a seed, not the whole answer. If no authored event fits, create a state-led ruling from the ledger and label script/content gaps during tests.
 
+When a turn is manually adjudicated, still write an event-shaped trace into the ledger. Use an id such as `manual_preschool_self_management` or `manual_ethics_meeting`, add it to `event_history`, and include a matching `timeline` item.
+
 ## Delta
 
 Every durable story consequence must appear in the delta.

@@ -77,6 +77,8 @@ python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 ```
 
+Do not use `simulate_life.py` as a later-age prologue generator or same-age micro-turn engine. For starts such as "20 岁大二" or dense arcs such as an investigation, manually create and update the state ledger, then use `scripts/validate_state.py` to check structure. If you probe the content pack during such tests, report strict mismatches instead of converting them into generated fallback events.
+
 Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
 
 When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.

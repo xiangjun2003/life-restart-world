@@ -24,18 +24,29 @@ DEFAULT_PACK = ROOT / "references" / "content-packs" / "classic-lite.json"
 
 
 ATTRIBUTES = ("CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL")
+INTENT_STOP_TAGS = {"achievement", "birth", "choice", "ending", "old_age", "origin"}
 
 ACTION_TAGS = {
-    "study": {"学习", "读书", "考试", "学校", "成绩", "study", "exam", "school"},
+    "study": {"学习", "读书", "认字", "课本", "练习册", "借书", "考试", "学校", "成绩", "study", "exam", "school"},
     "work": {"打工", "赚钱", "工作", "兼职", "创业", "work", "job", "earn", "business"},
     "money": {"钱", "电脑", "买", "攒钱", "money", "computer", "buy"},
     "technology": {"电脑", "编程", "代码", "互联网", "技术", "ai", "computer", "code", "internet", "technology"},
     "family": {"家", "父母", "母亲", "父亲", "亲人", "family", "parent"},
     "secret": {"偷偷", "隐瞒", "不告诉", "秘密", "secret", "hide"},
-    "relationship": {"朋友", "恋人", "老师", "关系", "friend", "love", "teacher"},
+    "relationship": {"朋友", "恋人", "老师", "信任", "关系", "friend", "love", "teacher", "trust"},
     "health": {"身体", "锻炼", "病", "健康", "health", "train"},
     "cultivation": {"修仙", "飞升", "灵根", "功法", "cultivation", "ascend"},
     "risk": {"冒险", "赌", "拼", "risk", "danger"},
+    "observation": {"观察", "留意", "记住", "察觉", "observe", "observation", "notice"},
+    "investigation": {"调查", "证据", "取证", "核验", "追查", "investigate", "evidence", "verify"},
+    "labor": {"劳动", "排班", "夜班", "工时", "实习", "labor", "shift", "schedule", "internship"},
+    "elder_care": {"老人", "养老", "照护", "护理", "elder", "eldercare", "care", "nursing"},
+    "ethics": {"伦理", "隐私", "同意", "合规", "ethics", "privacy", "consent", "compliance"},
+    "ai_scheduling": {"ai排班", "AI排班", "算法排班", "排班算法", "ai scheduling", "algorithmic scheduling"},
+    "evidence": {"证据", "留痕", "材料", "记录", "evidence", "record"},
+    "stealth": {"低调", "偷偷", "隐蔽", "不声张", "stealth", "quietly"},
+    "worker_fatigue": {"疲劳", "过劳", "夜班", "burnout", "fatigue", "overwork"},
+    "relationship_pressure": {"关系压力", "施压", "约谈", "人情", "relationship pressure", "pressure"},
 }
 
 TAG_GROUPS = {
@@ -49,6 +60,16 @@ TAG_GROUPS = {
     "health": {"health", "body", "illness"},
     "cultivation": {"cultivation", "ascend", "ascension", "mystery", "longevity"},
     "risk": {"risk", "danger", "choice", "crossroads"},
+    "observation": {"observation", "observe", "notice", "family", "mystery"},
+    "investigation": {"investigation", "evidence", "verify"},
+    "labor": {"labor", "schedule", "shift"},
+    "elder_care": {"elder_care", "care", "nursing"},
+    "ethics": {"ethics", "privacy", "consent", "compliance"},
+    "ai_scheduling": {"ai_scheduling", "algorithmic_scheduling"},
+    "evidence": {"evidence", "record"},
+    "stealth": {"stealth"},
+    "worker_fatigue": {"worker_fatigue", "burnout", "fatigue", "overwork"},
+    "relationship_pressure": {"relationship_pressure"},
 }
 
 
@@ -230,13 +251,13 @@ def infer_action(action: str | None) -> dict[str, Any]:
     if any(word in lower for word in ["拼命", "all in", "孤注一掷"]):
         risk = "high"
     checks = []
-    if {"study", "technology", "cultivation"} & tags:
+    if {"study", "technology", "cultivation", "investigation", "evidence", "ai_scheduling"} & tags:
         checks.append("INT")
-    if {"work", "risk", "secret"} & tags:
+    if {"work", "risk", "secret", "stealth", "ethics", "relationship_pressure"} & tags:
         checks.append("WIL")
-    if {"health", "cultivation"} & tags:
+    if {"health", "cultivation", "labor", "worker_fatigue", "elder_care"} & tags:
         checks.append("STR")
-    if "relationship" in tags:
+    if {"relationship", "relationship_pressure"} & tags:
         checks.append("CHR")
     return {
         "summary": action or "continue along the current life pressure",
@@ -358,9 +379,13 @@ def apply_pressure_clocks(state: dict[str, Any], updates: dict[str, Any] | None)
         else:
             stage = max(0, stage)
         clock["stage"] = stage
-        for key in ["meaning", "on_fill"]:
+        for key in ["meaning", "on_fill", "status", "last_consequence"]:
             if update.get(key):
                 clock[key] = str(update[key])
+        if limit is not None and stage >= limit and not clock.get("last_consequence") and not clock.get("status"):
+            clock["status"] = "filled"
+        elif clock.get("status") == "filled" and limit is not None and stage < limit:
+            clock.pop("status", None)
         clocks[str(clock_id)] = clock
 
 
@@ -437,13 +462,105 @@ def pool_weight(pack: dict[str, Any], event_id: str, age: int) -> int | None:
     return matching_pool_entries(pack, age).get(str(event_id))
 
 
+def raw_tags(tags: Any) -> set[str]:
+    if isinstance(tags, str):
+        return {tags}
+    return {str(tag) for tag in (tags or [])}
+
+
+def context_tokens(values: Any) -> set[str]:
+    tokens: set[str] = set()
+    if isinstance(values, dict):
+        iterable = values.keys()
+    elif isinstance(values, (list, tuple, set)):
+        iterable = values
+    elif values:
+        iterable = [values]
+    else:
+        iterable = []
+    for value in iterable:
+        text = str(value)
+        if not text:
+            continue
+        tokens.add(text)
+        for part in re.split(r"[_\-\s:/]+", text):
+            if part:
+                tokens.add(part)
+    return tokens
+
+
+def state_context_tags(state: dict[str, Any]) -> set[str]:
+    raw = set()
+    raw.update(context_tokens(state.get("flags", [])))
+    raw.update(context_tokens(state.get("open_threads", [])))
+    raw.update(context_tokens(state.get("event_history", [])))
+    raw.update(context_tokens(state.get("relationships", {})))
+    return semantic_tags(raw)
+
+
+def include_flag_refs(event: dict[str, Any]) -> set[str]:
+    refs: set[str] = set()
+    expr = str(event.get("include") or "")
+    for raw in re.findall(r"flags\?\[([^\]]+)\]", expr):
+        refs.update(str(item).strip() for item in raw.split(",") if str(item).strip())
+    return refs
+
+
 def action_relevance(event: dict[str, Any], intent: dict[str, Any]) -> float:
-    event_tags = semantic_tags(event.get("tags", []))
-    action_tags = semantic_tags(intent.get("tags", []))
-    overlap = len(event_tags & action_tags)
-    if not action_tags:
+    event_raw = raw_tags(event.get("tags", [])) - INTENT_STOP_TAGS
+    action_raw = raw_tags(intent.get("tags", [])) - INTENT_STOP_TAGS
+    if not action_raw:
         return 1.0
-    return 1.0 + overlap * 1.4
+    event_tags = semantic_tags(event_raw)
+    action_tags = semantic_tags(action_raw)
+    direct_overlap = len(event_raw & action_raw)
+    semantic_overlap = len(event_tags & action_tags)
+    weak_overlap = max(0, semantic_overlap - direct_overlap)
+    return 1.0 + direct_overlap * 2.0 + weak_overlap * 0.35
+
+
+def direct_intent_overlap(event: dict[str, Any], intent: dict[str, Any]) -> int:
+    event_raw = raw_tags(event.get("tags", [])) - INTENT_STOP_TAGS
+    action_raw = raw_tags(intent.get("tags", [])) - INTENT_STOP_TAGS
+    return len(event_raw & action_raw)
+
+
+def state_relevance(event: dict[str, Any], state: dict[str, Any]) -> float:
+    score = 1.0
+    event_tags = semantic_tags(event.get("tags", []))
+    state_tags = state_context_tags(state)
+    overlap = event_tags & state_tags
+    if overlap:
+        score += min(len(overlap), 4) * 0.25
+    flags = set(str(item) for item in state.get("flags", []))
+    matched_flags = include_flag_refs(event) & flags
+    if matched_flags:
+        score += min(len(matched_flags), 2) * 1.0
+    event_id = str(event.get("id", ""))
+    if event_id in state.get("open_threads", []):
+        score += 1.0
+    return score
+
+
+def raw_tag_catalog(pack: dict[str, Any]) -> set[str]:
+    tags = raw_tags(pack.get("compatible_world_tags", []))
+    for event in pack.get("events", []):
+        tags.update(raw_tags(event.get("tags", [])))
+    for talent in pack.get("talents", []):
+        tags.update(raw_tags(talent.get("tags", [])))
+    return tags
+
+
+def unsupported_tag_report(tags: list[str], raw_catalog: set[str], semantic_catalog: set[str]) -> tuple[list[str], list[str]]:
+    unsupported = []
+    weakly_supported = []
+    for tag in tags:
+        expanded = semantic_tags([tag])
+        if not (expanded & semantic_catalog):
+            unsupported.append(tag)
+        elif tag not in raw_catalog:
+            weakly_supported.append(tag)
+    return unsupported, weakly_supported
 
 
 def semantic_tags(tags: Any) -> set[str]:
@@ -461,10 +578,11 @@ def semantic_tags(tags: Any) -> set[str]:
 
 
 def intent_aligned(event: dict[str, Any], intent: dict[str, Any]) -> bool:
-    action_tags = semantic_tags(intent.get("tags", []))
+    meaningful_intent = raw_tags(intent.get("tags", [])) - INTENT_STOP_TAGS
+    action_tags = semantic_tags(meaningful_intent)
     if not action_tags:
         return True
-    event_tags = semantic_tags(event.get("tags", []))
+    event_tags = semantic_tags(raw_tags(event.get("tags", [])) - INTENT_STOP_TAGS)
     return bool(event_tags & action_tags)
 
 
@@ -491,22 +609,53 @@ def pack_tag_catalog(pack: dict[str, Any]) -> set[str]:
     return tags
 
 
+def world_shape_tags(state: dict[str, Any]) -> list[str]:
+    world = state.get("world", {})
+    if not isinstance(world, dict):
+        return []
+    tags: list[str] = []
+    for key in ["tags", "world_tags"]:
+        value = world.get(key)
+        if isinstance(value, str):
+            tags.extend(tag.strip() for tag in value.split(",") if tag.strip())
+        elif isinstance(value, list):
+            tags.extend(str(tag) for tag in value)
+    note = world.get("session_note", {})
+    if isinstance(note, dict):
+        for key in ["state_axes", "tags", "world_tags"]:
+            value = note.get(key)
+            if isinstance(value, str):
+                tags.extend(tag.strip() for tag in value.split(",") if tag.strip())
+            elif isinstance(value, list):
+                tags.extend(str(tag) for tag in value)
+    seen = set()
+    unique = []
+    for tag in tags:
+        if tag and tag not in seen:
+            unique.append(tag)
+            seen.add(tag)
+    return unique
+
+
 def content_pack_diagnostic(pack: dict[str, Any], state: dict[str, Any], intent: dict[str, Any]) -> dict[str, Any]:
     compatible_realms = set(str(item) for item in pack.get("compatible_realms", []))
     realm = str(state.get("realm", "human_world"))
     intent_tags = [str(tag) for tag in intent.get("tags", [])]
     tag_catalog = pack_tag_catalog(pack)
-    unsupported_tags = []
-    for tag in intent_tags:
-        expanded = semantic_tags([tag])
-        if not (expanded & tag_catalog):
-            unsupported_tags.append(tag)
+    raw_catalog = raw_tag_catalog(pack)
+    unsupported_tags, weakly_supported_tags = unsupported_tag_report(intent_tags, raw_catalog, tag_catalog)
+    world_tags = world_shape_tags(state)
+    unsupported_world_tags, weakly_supported_world_tags = unsupported_tag_report(world_tags, raw_catalog, tag_catalog)
     return {
         "pack_id": pack.get("id"),
         "realm": realm,
         "realm_supported": not compatible_realms or realm in compatible_realms or "any" in compatible_realms,
         "compatible_realms": sorted(compatible_realms),
         "unsupported_intent_tags": unsupported_tags,
+        "weakly_supported_intent_tags": weakly_supported_tags,
+        "world_shape_tags": world_tags,
+        "unsupported_world_tags": unsupported_world_tags,
+        "weakly_supported_world_tags": weakly_supported_world_tags,
     }
 
 
@@ -536,7 +685,7 @@ def collect_candidates(pack: dict[str, Any], state: dict[str, Any], intent: dict
         if event.get("exclude") and eval_condition(state, event.get("exclude")):
             continue
         base = pooled if pooled is not None else int(event.get("weight", 1))
-        weight = max(0.1, base * action_relevance(event, intent))
+        weight = max(0.1, base * action_relevance(event, intent) * state_relevance(event, state))
         candidates.append((event, weight))
     return candidates
 
@@ -579,6 +728,10 @@ def pick_event(candidates: list[tuple[dict[str, Any], float]], rng: random.Rando
         if pick <= upto:
             return event
     return candidates[-1][0]
+
+
+def pick_best_event(candidates: list[tuple[dict[str, Any], float]], intent: dict[str, Any]) -> dict[str, Any]:
+    return max(candidates, key=lambda item: (direct_intent_overlap(item[0], intent), item[1]))[0]
 
 
 def advance_age(state: dict[str, Any], rng: random.Random) -> dict[str, int]:
@@ -765,14 +918,16 @@ def command_turn(args: argparse.Namespace) -> None:
     rng = random.Random(f"{seed}:{state.get('turn', 0)}:{intent.get('summary')}")
     before = copy.deepcopy(state)
     diagnostic = content_pack_diagnostic(pack, state, intent)
-    if args.strict and not diagnostic["realm_supported"]:
+    unsupported_world = (not diagnostic["realm_supported"]) or bool(diagnostic.get("unsupported_world_tags"))
+    if args.strict and unsupported_world:
         result = {
             "error": "unsupported_world",
             "intent": intent,
             "content_pack_diagnostic": diagnostic,
             "state_delta": {},
             "state": before,
-            "gm_instruction": "Strict mode found that this content pack does not support the state's realm. Report the content-pack mismatch and host manually only if the playtest is evaluating Game Master behavior.",
+            "canonical_state_unchanged": True,
+            "gm_instruction": "Strict mode found that this content pack does not support the state's realm or declared world shape. Report the content-pack mismatch and host manually only if the playtest is evaluating Game Master behavior.",
         }
         print(dump(result))
         raise SystemExit(4)
@@ -786,12 +941,15 @@ def command_turn(args: argparse.Namespace) -> None:
                 "error": "weak_intent_match",
                 "intent": intent,
                 "age_step": age_step,
+                "age_step_is_diagnostic": True,
                 "candidate_summaries": summarize_candidates(candidates),
                 "content_pack_diagnostic": diagnostic,
                 "state_delta": {},
                 "state": before,
                 "probe_state": state,
-                "gm_instruction": "Strict mode found only weakly related age-valid events. Report this gap instead of using an unrelated event. Keep state as the canonical pre-turn state; probe_state is diagnostic only.",
+                "probe_only": True,
+                "canonical_state_unchanged": True,
+                "gm_instruction": "Strict mode found only weakly related age-valid events. Report this gap instead of using an unrelated event. Keep state as the canonical pre-turn state; age_step and probe_state are diagnostic only.",
             }
             print(dump(result))
             raise SystemExit(3)
@@ -801,15 +959,21 @@ def command_turn(args: argparse.Namespace) -> None:
             "error": "no_matching_event",
             "intent": intent,
             "age_step": age_step,
+            "age_step_is_diagnostic": True,
             "content_pack_diagnostic": diagnostic,
             "state_delta": {},
             "state": before,
             "probe_state": state,
-            "gm_instruction": "Strict mode found no matching event. Report this gap instead of generating a fallback event. Keep state as the canonical pre-turn state; probe_state is diagnostic only.",
+            "probe_only": True,
+            "canonical_state_unchanged": True,
+            "gm_instruction": "Strict mode found no matching event. Report this gap instead of generating a fallback event. Keep state as the canonical pre-turn state; age_step and probe_state are diagnostic only.",
         }
         print(dump(result))
         raise SystemExit(2)
-    event = pick_event(candidates, rng) if candidates else generated_event(state, intent)
+    if candidates:
+        event = pick_best_event(candidates, intent) if args.strict else pick_event(candidates, rng)
+    else:
+        event = generated_event(state, intent)
     selected = copy.deepcopy(event)
     if selected.get("age_advance") == "none":
         state["age"] = before.get("age", state.get("age", 0))
@@ -847,15 +1011,8 @@ def command_demo(args: argparse.Namespace) -> None:
     state = create_state(pack, new_args)
     print("# Demo State")
     print(dump(state))
-    actions = [
-        "我认真观察家里人的期待",
-        "我努力学习，争取老师帮助",
-        "我偷偷打工，攒钱买电脑",
-        "我想离开家乡去更大的城市",
-        "我修炼那本奇怪的书",
-    ]
     for index in range(args.turns):
-        action = actions[index % len(actions)]
+        action = demo_action_for_age(state)
         turn_args = argparse.Namespace(pack=args.pack, state=dump(state), action=action, save=None)
         pack_data = load_json(Path(args.pack))
         rng = random.Random(f"{state.get('rng_seed')}:{state.get('turn', 0)}:{action}")
@@ -878,6 +1035,26 @@ def command_demo(args: argparse.Namespace) -> None:
             break
 
 
+def demo_action_for_age(state: dict[str, Any]) -> str:
+    age = int(state.get("age", 0))
+    flags = set(str(item) for item in state.get("flags", []))
+    if age < 5:
+        return "我认真观察家里人的期待和钱的问题"
+    if age < 9:
+        return "我记住见过的屏幕和机器，想弄明白它们"
+    if age < 13:
+        return "我努力学习，争取老师帮助"
+    if age < 16 and "teacher_noticed" in flags:
+        return "我请老师允许我多用机房学习电脑"
+    if age < 19:
+        return "我在学习之外偷偷打工，攒钱买电脑"
+    if age < 27:
+        return "我想离开家乡去更大的城市"
+    if "found_hidden_manual" in flags:
+        return "我继续修炼并寻找突破"
+    return "我稳住事业，也回头处理家里的关系"
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Life Restart World portable simulator")
     p.set_defaults(func=None)
@@ -892,7 +1069,7 @@ def parser() -> argparse.ArgumentParser:
     new.add_argument("--pace", choices=["detailed", "standard", "fast"], default="standard")
     new.add_argument("--style", default="realistic")
     new.add_argument("--world", default="")
-    new.add_argument("--talents", type=int, default=3)
+    new.add_argument("--talents", type=int, default=3, help="number of random talents to sample")
     new.set_defaults(func=command_new)
 
     turn = sub.add_parser("turn", help="advance one turn")

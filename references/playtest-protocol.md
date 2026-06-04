@@ -15,7 +15,10 @@ Do not hide failures during tests.
 - In strict script tests, treat `weak_intent_match` like a real failure: the pack had age-valid material, but not material that matched the user's intent.
 - Treat `unsupported_world` as an even earlier failure: the content pack does not support the state's realm or requested world shape.
 - Use `content_pack_diagnostic.unsupported_intent_tags` to name what the pack does not cover.
-- If strict mode returns `probe_state`, treat it as diagnostic only; keep `state` as the canonical ledger.
+- If strict mode returns `probe_state` or `age_step_is_diagnostic`, treat both as diagnostic only; keep `state` as the canonical ledger.
+- If `canonical_state_unchanged` is true, do not narrate or record a turn advancement from that script output.
+- If strict mode succeeds only because of generic structural tags such as `choice` or `ending`, record that as a weak match in the playtest notes and prefer manual adjudication.
+- When manually adjudicating a turn after a script/content gap, add a clear `manual_*` id to `event_history` and `timeline` so the ledger remains auditable.
 
 The purpose of playtesting is to expose missing capabilities, not to produce the smoothest possible demo.
 
@@ -29,6 +32,16 @@ For each playtest, record:
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
 - Any mismatch between the requested world and available event packs.
 - Any state drift, missing relationship mechanics, unclear instruction, or safety concern.
+
+## Playtest Length
+
+Use short needle tests when checking a specific rule or script behavior.
+
+- 3-4 turns: good for a single mechanic, parser miss, strict error, or one event-chain probe.
+- 10-14 turns: good for validating the actual play loop inside one life phase or one major arc.
+- Full life: only when the skill is already stable enough, or when the goal is explicitly to test long-form pacing, endings, ascension, resurrection, or inheritance.
+
+For longer tests, ask the tester to strictly use the skill, read only the references needed for play, and stop at a named phase endpoint. The endpoint should be part of the prompt so the transcript shows whether pacing stayed playable.
 
 ## Good Failure Reports
 
