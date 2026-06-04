@@ -50,6 +50,7 @@ Do not require a session world note for a quick original-style run if the user w
 
 - `premise`, `tone`, and `boundaries` guide what counts as plausible.
 - `state_axes` become good candidates for `flags`, `open_threads`, and state summaries.
+- `state_axes` are ledger design axes, not content-pack compatibility tags. If a custom world needs compatibility diagnostics, put explicit tags in `tags`, `world_tags`, or `compatibility_tags`.
 - `factions` help relationships and consequences stay specific.
 - `pressure_clocks` model slow-moving threats without forcing scripted events.
 - `evidence_tracks` remind the Game Master when proof, witnesses, artifacts, or credibility matter.

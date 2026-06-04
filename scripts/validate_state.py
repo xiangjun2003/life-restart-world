@@ -37,6 +37,9 @@ REQUIRED_KEYS = [
 ]
 
 ATTRIBUTES = ["CHR", "INT", "STR", "MNY", "SPR", "LUK", "WIL"]
+LIST_KEYS = ["talents", "flags", "event_history", "open_threads", "timeline"]
+EVIDENCE_RISKS = {"low", "medium", "high", "critical"}
+PRESSURE_STATUSES = {"active", "filled", "resolved", "closed"}
 
 
 def load_state(value: str) -> dict[str, Any]:
@@ -61,9 +64,42 @@ def is_int_like(value: Any) -> bool:
         return False
 
 
+def int_or_none(value: Any) -> int | None:
+    if not is_int_like(value):
+        return None
+    return int(value)
+
+
 def check_list(state: dict[str, Any], key: str, errors: list[str]) -> None:
     if not isinstance(state.get(key), list):
         errors.append(f"{key} must be a list")
+
+
+def duplicate_values(items: list[Any]) -> list[str]:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for item in items:
+        value = json.dumps(item, ensure_ascii=False, sort_keys=True) if isinstance(item, (dict, list)) else str(item)
+        if value in seen:
+            duplicates.add(value)
+        seen.add(value)
+    return sorted(duplicates)
+
+
+def parse_timeline_event_ids(value: Any) -> set[str]:
+    if isinstance(value, list):
+        values = value
+    elif value:
+        values = [value]
+    else:
+        values = []
+    ids: set[str] = set()
+    for item in values:
+        for part in str(item).split("+"):
+            event_id = part.strip()
+            if event_id:
+                ids.add(event_id)
+    return ids
 
 
 def check_relationships(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
@@ -118,6 +154,8 @@ def check_pressure_clocks(state: dict[str, Any], errors: list[str], warnings: li
                 warnings.append(f"pressure_clocks.{clock_id} is filled; record a consequence, status, or resolve it")
         elif stage < 0:
             errors.append(f"pressure_clocks.{clock_id}.stage must be nonnegative")
+        if clock.get("status") and str(clock["status"]) not in PRESSURE_STATUSES:
+            warnings.append(f"pressure_clocks.{clock_id}.status is unusual: {clock['status']}")
         if not clock.get("meaning"):
             warnings.append(f"pressure_clocks.{clock_id}.meaning is empty")
 
@@ -139,11 +177,83 @@ def check_optional_extensions(state: dict[str, Any], errors: list[str], warnings
                 holders = item.get("holders")
                 if holders is not None and not isinstance(holders, list):
                     errors.append(f"evidence.{item_id}.holders must be a list when present")
+                elif not holders:
+                    warnings.append(f"evidence.{item_id}.holders is empty")
+                if item.get("risk") and str(item["risk"]) not in EVIDENCE_RISKS:
+                    warnings.append(f"evidence.{item_id}.risk is unusual: {item['risk']}")
     relationships = state.get("relationships")
     if isinstance(relationships, dict):
         for name, entry in relationships.items():
             if isinstance(entry, dict) and "tensions" in entry and not isinstance(entry["tensions"], list):
                 errors.append(f"relationships.{name}.tensions must be a list when present")
+
+
+def check_timeline_and_history(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+    timeline = state.get("timeline")
+    history = state.get("event_history")
+    if not isinstance(timeline, list) or not isinstance(history, list):
+        return
+    turn = int_or_none(state.get("turn")) or 0
+    if turn > 0 and not timeline:
+        warnings.append("timeline is empty after play has advanced")
+    if turn > 0 and not history:
+        warnings.append("event_history is empty after play has advanced")
+
+    timeline_ids: set[str] = set()
+    playable_same_age_turns: dict[int, int] = {}
+    same_age_missing_time: dict[int, list[int]] = {}
+    for index, item in enumerate(timeline):
+        if not isinstance(item, dict):
+            errors.append(f"timeline[{index}] must be an object")
+            continue
+        turn_value = item.get("turn")
+        event_ids = parse_timeline_event_ids(item.get("event_id"))
+        if not event_ids:
+            warnings.append(f"timeline[{index}].event_id is empty")
+        else:
+            timeline_ids.update(event_ids)
+        if not item.get("summary") and not item.get("title") and not item.get("action"):
+            warnings.append(f"timeline[{index}] should include summary, title, or action")
+        if "age" not in item and "time" not in item:
+            warnings.append(f"timeline[{index}] should include age or time")
+        if isinstance(turn_value, int) and is_int_like(item.get("age")):
+            age = int(item["age"])
+            playable_same_age_turns[age] = playable_same_age_turns.get(age, 0) + 1
+            if "time" not in item:
+                same_age_missing_time.setdefault(age, []).append(index)
+
+    history_ids = {str(item) for item in history}
+    for event_id in sorted(history_ids - timeline_ids):
+        warnings.append(f"event_history.{event_id} has no matching timeline item")
+    for event_id in sorted(timeline_ids - history_ids):
+        warnings.append(f"timeline event {event_id} is missing from event_history")
+
+    for age, count in sorted(playable_same_age_turns.items()):
+        if count > 1 and "time" not in state:
+            warnings.append(f"multiple playable turns share age {age}; add state.time to preserve sequence")
+        missing = same_age_missing_time.get(age, [])
+        if count > 1 and missing:
+            warnings.append(f"timeline items for repeated age {age} should include time: indexes {missing}")
+
+    manual_ids = [event_id for event_id in history_ids if event_id.startswith("manual_")]
+    for event_id in manual_ids:
+        if event_id not in timeline_ids:
+            warnings.append(f"manual event {event_id} should have a timeline item")
+
+
+def check_ledger_density(state: dict[str, Any], warnings: list[str]) -> None:
+    for key in ["flags", "open_threads"]:
+        values = state.get(key)
+        if isinstance(values, list):
+            duplicates = duplicate_values(values)
+            if duplicates:
+                warnings.append(f"{key} contains duplicate values: {duplicates}")
+    open_threads = state.get("open_threads")
+    if isinstance(open_threads, list) and len(open_threads) > 8:
+        warnings.append(f"open_threads has more than 8 items ({len(open_threads)}): {open_threads}; close stale threads or summarize them")
+    relationships = state.get("relationships")
+    if isinstance(relationships, dict) and len(relationships) > 8:
+        warnings.append(f"relationships has more than 8 entries ({len(relationships)}): {sorted(relationships)}; keep only active relationships in the snapshot")
 
 
 def validate(state: dict[str, Any]) -> dict[str, Any]:
@@ -177,12 +287,14 @@ def validate(state: dict[str, Any]) -> dict[str, Any]:
 
     if not isinstance(state.get("world"), dict):
         errors.append("world must be an object")
-    for key in ["talents", "flags", "event_history", "open_threads", "timeline"]:
+    for key in LIST_KEYS:
         check_list(state, key, errors)
 
     check_relationships(state, errors, warnings)
     check_pressure_clocks(state, errors, warnings)
     check_optional_extensions(state, errors, warnings)
+    check_timeline_and_history(state, errors, warnings)
+    check_ledger_density(state, warnings)
 
     if state.get("terminal") is False and state.get("terminal_reason"):
         warnings.append("terminal_reason is set while terminal is false")

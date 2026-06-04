@@ -30,6 +30,8 @@ For each playtest, record:
 - Whether hosting was manual, script-assisted, or script-driven.
 - Each turn's user action, event or adjudication, state delta, and next affordances.
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON.
+- Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
+- For ledger stress tests, validate at least one mid-run state as well as the final state; final cleanup can hide whether the middle of play became hard to continue.
 - Any mismatch between the requested world and available event packs.
 - Any state drift, missing relationship mechanics, unclear instruction, or safety concern.
 

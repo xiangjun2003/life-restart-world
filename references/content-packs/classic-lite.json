@@ -222,6 +222,29 @@
       "choices": ["Accept the friendship", "Keep distance to focus", "Share a small secret"]
     },
     {
+      "id": "anonymous_fee_notes",
+      "title": "匿名费用笔记",
+      "age_range": [15, 18],
+      "realm": "human_world",
+      "weight": 4,
+      "repeatable": false,
+      "include": "flags?[teacher_noticed]|flags?[classmate_friendship]",
+      "tags": ["education", "investigation", "evidence", "ethics"],
+      "effects": {"INT": 1, "SPR": -1, "WIL": 1},
+      "set_flags": ["anonymous_fee_notes"],
+      "open_threads": ["school_fee_pressure", "administrative_attention"],
+      "evidence": {
+        "anonymous_fee_notes": {
+          "claim": "Anonymous notes suggest some fees or tutoring lists may be unevenly applied.",
+          "status": "unverified_notes",
+          "holders": ["self"],
+          "risk": "medium"
+        }
+      },
+      "narrative_seed": "A small investigation begins with anonymized notes, careful boundaries, and the risk of drawing administrative attention.",
+      "choices": ["Verify only public facts", "Ask a trusted teacher for boundaries", "Drop the matter and protect exam focus"]
+    },
+    {
       "id": "school_computer_room_access",
       "title": "机房边角时间",
       "age_range": [13, 18],
@@ -474,7 +497,7 @@
     "0": [{"event_id": "birth_county", "weight": 20}],
     "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
     "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "classmate_friendship", "weight": 4}],
+    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}],
     "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
     "18-26": [{"event_id": "city_arrival", "weight": 10}],
     "24-40": [{"event_id": "small_success", "weight": 9}],

@@ -55,6 +55,9 @@ Top-level compatibility fields help tests expose mismatches. They do not force a
   "pressure_clocks": {
     "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
   },
+  "evidence": {
+    "computer_room_permission": {"status": "witnessed", "holders": ["mentor_teacher"]}
+  },
   "set_flags": ["teacher_noticed"],
   "open_threads": ["exam_path"],
   "narrative_seed": "A teacher notices the child making unusual effort with limited resources.",
@@ -84,6 +87,7 @@ Top-level compatibility fields help tests expose mismatches. They do not force a
 - `effects`: numeric attribute deltas. `LIF <= -1` can end a mortal life.
 - `relationships`: relationship score updates keyed by person or faction. Use `{"delta": 1, "note": "..."}` for relative changes or `{"score": 2}` for absolute assignment.
 - `pressure_clocks`: slow-tension updates keyed by clock ID. Use `{"delta": 1, "limit": 4, "meaning": "..."}`, `{"set_stage": 2}`, `{"status": "resolved"}`, `{"last_consequence": "..."}`, or `{"close": true}`. Helper scripts mark a clock as `status: filled` when it reaches its limit and no consequence/status is supplied.
+- `evidence`: optional evidence updates keyed by evidence ID. Use small entries with `claim`, `status`, `holders`, and optional `risk`.
 - `set_flags`, `clear_flags`, `open_threads`, `close_threads`: durable state changes.
 - `life_cap`: set or raise current life cap.
 - `existence_state`: set a new existence state.

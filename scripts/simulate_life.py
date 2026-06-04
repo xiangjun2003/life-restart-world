@@ -389,10 +389,28 @@ def apply_pressure_clocks(state: dict[str, Any], updates: dict[str, Any] | None)
         clocks[str(clock_id)] = clock
 
 
+def apply_evidence(state: dict[str, Any], updates: dict[str, Any] | None) -> None:
+    if not isinstance(updates, dict):
+        return
+    evidence = state.setdefault("evidence", {})
+    for item_id, update in updates.items():
+        if update is None:
+            evidence.pop(item_id, None)
+            continue
+        if not isinstance(update, dict):
+            update = {"status": str(update)}
+        current = evidence.get(item_id, {})
+        item = dict(current) if isinstance(current, dict) else {}
+        for key, value in update.items():
+            item[key] = value
+        evidence[str(item_id)] = item
+
+
 def apply_event(state: dict[str, Any], event: dict[str, Any], intent: dict[str, Any]) -> dict[str, Any]:
     apply_effects(state, event.get("effects"))
     apply_relationships(state, event.get("relationships"))
     apply_pressure_clocks(state, event.get("pressure_clocks"))
+    apply_evidence(state, event.get("evidence"))
     flags = set(state.get("flags", []))
     flags.update(event.get("set_flags", []))
     flags.difference_update(event.get("clear_flags", []))
@@ -609,7 +627,7 @@ def pack_tag_catalog(pack: dict[str, Any]) -> set[str]:
     return tags
 
 
-def world_shape_tags(state: dict[str, Any]) -> list[str]:
+def world_compatibility_tags(state: dict[str, Any]) -> list[str]:
     world = state.get("world", {})
     if not isinstance(world, dict):
         return []
@@ -622,7 +640,7 @@ def world_shape_tags(state: dict[str, Any]) -> list[str]:
             tags.extend(str(tag) for tag in value)
     note = world.get("session_note", {})
     if isinstance(note, dict):
-        for key in ["state_axes", "tags", "world_tags"]:
+        for key in ["tags", "world_tags", "compatibility_tags"]:
             value = note.get(key)
             if isinstance(value, str):
                 tags.extend(tag.strip() for tag in value.split(",") if tag.strip())
@@ -644,7 +662,7 @@ def content_pack_diagnostic(pack: dict[str, Any], state: dict[str, Any], intent:
     tag_catalog = pack_tag_catalog(pack)
     raw_catalog = raw_tag_catalog(pack)
     unsupported_tags, weakly_supported_tags = unsupported_tag_report(intent_tags, raw_catalog, tag_catalog)
-    world_tags = world_shape_tags(state)
+    world_tags = world_compatibility_tags(state)
     unsupported_world_tags, weakly_supported_world_tags = unsupported_tag_report(world_tags, raw_catalog, tag_catalog)
     return {
         "pack_id": pack.get("id"),
@@ -653,6 +671,7 @@ def content_pack_diagnostic(pack: dict[str, Any], state: dict[str, Any], intent:
         "compatible_realms": sorted(compatible_realms),
         "unsupported_intent_tags": unsupported_tags,
         "weakly_supported_intent_tags": weakly_supported_tags,
+        "world_compatibility_tags": world_tags,
         "world_shape_tags": world_tags,
         "unsupported_world_tags": unsupported_world_tags,
         "weakly_supported_world_tags": weakly_supported_world_tags,
@@ -800,6 +819,14 @@ def state_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
             if before_clocks.get(key) != after_clocks.get(key):
                 changed[key] = [before_clocks.get(key), after_clocks.get(key)]
         diff["pressure_clocks"] = changed
+    if before.get("evidence", {}) != after.get("evidence", {}):
+        changed = {}
+        before_evidence = before.get("evidence", {})
+        after_evidence = after.get("evidence", {})
+        for key in sorted(set(before_evidence) | set(after_evidence)):
+            if before_evidence.get(key) != after_evidence.get(key):
+                changed[key] = [before_evidence.get(key), after_evidence.get(key)]
+        diff["evidence"] = changed
     return diff
 
 

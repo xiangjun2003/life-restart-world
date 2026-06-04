@@ -101,6 +101,9 @@ For `standard` pace, a useful default is:
 - Use `time` when several meaningful turns happen inside the same age.
 - Put all triggered event IDs in `event_history`.
 - Put each turn's story summary in `timeline`.
+- Keep `event_history` and `timeline` aligned. A manual ruling should still have a `manual_*` event id in both places.
+- If many turns share the same `age`, add `time` so the order stays playable.
+- Close stale `open_threads` when a later event resolves or supersedes them; the snapshot should show the current board, not every idea that ever appeared.
 
 Relationship entries should be small but explicit:
 
@@ -118,6 +121,8 @@ Relationship entries should be small but explicit:
 
 Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns. If a clock reaches its limit, either trigger its consequence soon or record `last_consequence` / `status` so the ledger shows it was honored.
 
+Pressure clocks can count down only when the clock meaning is phrased as a deficit or risk, such as "evidence gap" or "debt pressure". They are not a generic progress bar. For proof quality, prefer `evidence` entries with `status`, `holders`, and chain notes, then close or resolve the pressure clock when the evidence gap is handled.
+
 Evidence entries are optional but useful for investigative worlds:
 
 ```json
@@ -131,6 +136,8 @@ Evidence entries are optional but useful for investigative worlds:
 }
 ```
 
+Evidence should include enough custody to matter in play: at minimum a `claim` or `status`, plus `holders` when someone knows, stores, or can contest it.
+
 Use `time` when age is too coarse:
 
 ```json
@@ -139,6 +146,8 @@ Use `time` when age is too coarse:
   "time": {"label": "16岁，高三前夜", "scale": "school_term", "beat": 7}
 }
 ```
+
+If multiple playable turns share the same `age`, add `time` to the state and to the relevant timeline items. The current state-level `time` tells where play is now; timeline item times preserve the order of past beats.
 
 ## Prologue State
 
