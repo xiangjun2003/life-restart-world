@@ -46,6 +46,8 @@ INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
 CUSTOM_INTENT_SOURCES = {"modified_entry", "freeform"}
 INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
+PACK_POLICY_MODES = {"none", "reference", "adjudication", "active"}
+NON_ADJUDICATING_PACK_POLICY_MODES = {"none", "reference"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
 INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
 PHASE_STRING_LIST_KEYS = [
@@ -202,7 +204,51 @@ def has_real_content_pack(value: dict[str, Any]) -> bool:
     return content_pack.strip().lower() not in NO_PACK_PLACEHOLDERS
 
 
-def check_world(value: Any, active_clocks: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
+def collect_event_ids(checkpoint: dict[str, Any]) -> set[str]:
+    event_ids: set[str] = set()
+    timeline = checkpoint.get("recent_timeline")
+    if isinstance(timeline, list):
+        for item in timeline:
+            if isinstance(item, dict) and isinstance(item.get("event_id"), str):
+                event_ids.add(item["event_id"])
+    return event_ids
+
+
+def check_pack_policy(checkpoint: dict[str, Any], world: dict[str, Any], content_pack_present: bool, errors: list[str], warnings: list[str]) -> None:
+    policy = world.get("pack_policy")
+    if policy is None:
+        if not content_pack_present:
+            warnings.append("custom or no-pack checkpoint should include world.pack_policy with mode none, reference, or adjudication")
+        return
+    if not isinstance(policy, dict):
+        errors.append("world.pack_policy must be an object when present")
+        return
+
+    mode = policy.get("mode")
+    if not isinstance(mode, str) or mode not in PACK_POLICY_MODES:
+        errors.append(f"world.pack_policy.mode must be one of {sorted(PACK_POLICY_MODES)}")
+        return
+
+    evaluated_packs = policy.get("evaluated_packs")
+    if evaluated_packs is not None:
+        check_string_list(evaluated_packs, "world.pack_policy.evaluated_packs", errors, warnings)
+    if "reason" in policy and not isinstance(policy["reason"], str):
+        errors.append("world.pack_policy.reason must be a string when present")
+
+    if content_pack_present and mode == "none":
+        warnings.append("world.pack_policy.mode=none but world.content_pack is present")
+    if not content_pack_present and mode == "active":
+        warnings.append("world.pack_policy.mode=active requires a real world.content_pack")
+    if not content_pack_present and mode in {"reference", "adjudication"}:
+        if not isinstance(evaluated_packs, list) or not any(isinstance(item, str) and item.strip() for item in evaluated_packs):
+            warnings.append(f"world.pack_policy.mode={mode} should name inspected packs in evaluated_packs")
+    if not content_pack_present and mode in NON_ADJUDICATING_PACK_POLICY_MODES:
+        non_manual_ids = sorted(event_id for event_id in collect_event_ids(checkpoint) if not event_id.startswith("manual_"))
+        if non_manual_ids:
+            warnings.append(f"world.pack_policy.mode={mode} but non-manual event ids appear without an active/adjudication pack: {non_manual_ids}")
+
+
+def check_world(checkpoint: dict[str, Any], value: Any, active_clocks: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
     if not isinstance(value, dict):
         errors.append("world must be an object")
         return
@@ -212,6 +258,7 @@ def check_world(value: Any, active_clocks: dict[str, Any], errors: list[str], wa
     if isinstance(value.get("content_pack"), str) and not has_real_content_pack(value):
         warnings.append("world.content_pack looks like a no-pack placeholder; omit content_pack for custom/no-pack worlds")
     content_pack_present = has_real_content_pack(value)
+    check_pack_policy(checkpoint, value, content_pack_present, errors, warnings)
     if not value.get("premise"):
         warnings.append("world.premise is empty")
     session_note = value.get("session_note")
@@ -250,6 +297,22 @@ def check_world(value: Any, active_clocks: dict[str, Any], errors: list[str], wa
                     for key in ["stage", "limit"]:
                         if isinstance(note_clock, dict) and key in note_clock and key in clock and is_int_like(note_clock[key]) and is_int_like(clock[key]) and int(note_clock[key]) != int(clock[key]):
                             warnings.append(f"world.session_note.pressure_clocks.{clock_id}.{key}={note_clock[key]} differs from pressure_clocks.{clock_id}.{key}={clock[key]}; checkpoint ledger is the source of truth")
+
+
+def check_session_note_ledger_anchors(checkpoint: dict[str, Any], warnings: list[str]) -> None:
+    world = checkpoint.get("world")
+    if not isinstance(world, dict) or has_real_content_pack(world):
+        return
+    note = world.get("session_note")
+    if not isinstance(note, dict):
+        return
+    anchors = collect_current_board_hooks(checkpoint)
+    state_axes = {str(item) for item in note.get("state_axes", []) if isinstance(item, str)}
+    factions = set(note.get("factions", {})) if isinstance(note.get("factions"), dict) else set()
+    if state_axes and not (state_axes & anchors):
+        warnings.append("world.session_note.state_axes are not anchored in the checkpoint ledger or next affordances; custom world axes should appear as flags, open_threads, clock/evidence ids, relationship ids, or state_hooks")
+    if factions and not (factions & anchors):
+        warnings.append("world.session_note.factions are not anchored in the checkpoint ledger or next affordances; at least one active faction should appear as a relationship/thread/clock/evidence id or state_hook")
 
 
 def relationship_score(entry: Any) -> Any:
@@ -440,6 +503,36 @@ def collect_known_hooks(checkpoint: dict[str, Any]) -> set[str]:
         factions = session_note.get("factions")
         if isinstance(factions, dict):
             hooks.update(str(item) for item in factions)
+    return hooks
+
+
+def collect_current_board_hooks(checkpoint: dict[str, Any]) -> set[str]:
+    hooks: set[str] = set()
+    for key in ["relationships", "pressure_clocks", "evidence"]:
+        value = checkpoint.get(key)
+        if isinstance(value, dict):
+            hooks.update(str(item) for item in value)
+    for key in ["flags", "open_threads"]:
+        value = checkpoint.get(key)
+        if isinstance(value, list):
+            hooks.update(str(item) for item in value if isinstance(item, str))
+    affordances = checkpoint.get("next_affordances")
+    if isinstance(affordances, list):
+        for item in affordances:
+            if isinstance(item, dict):
+                for key in ["state_hooks", "targets"]:
+                    value = item.get(key)
+                    if isinstance(value, list):
+                        hooks.update(str(hook) for hook in value if isinstance(hook, str))
+    intent = checkpoint.get("last_intent")
+    if isinstance(intent, dict):
+        for key in ["targets", "tags"]:
+            value = intent.get(key)
+            if isinstance(value, list):
+                hooks.update(str(hook) for hook in value if isinstance(hook, str))
+    delta = checkpoint.get("last_delta")
+    if isinstance(delta, dict):
+        hooks.update(collect_delta_hooks(delta))
     return hooks
 
 
@@ -796,7 +889,8 @@ def validate(checkpoint: dict[str, Any]) -> dict[str, Any]:
 
     active_clocks = checkpoint.get("pressure_clocks") if isinstance(checkpoint.get("pressure_clocks"), dict) else {}
     if "world" in checkpoint:
-        check_world(checkpoint.get("world"), active_clocks, errors, warnings)
+        check_world(checkpoint, checkpoint.get("world"), active_clocks, errors, warnings)
+        check_session_note_ledger_anchors(checkpoint, warnings)
     check_attributes(checkpoint.get("attributes"), errors, warnings)
     check_attribute_ranges(checkpoint, warnings)
     for key in LIST_KEYS:

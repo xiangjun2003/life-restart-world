@@ -42,6 +42,7 @@ Load only what is needed:
    - Ask a compact opening prompt only when the user clearly wants to choose setup before play. Ask only for missing essentials, not for a full form.
    - Default to `narrative-first`, `semi-random`, `standard` pace.
    - For custom worlds, draft a short session world note before resolving turns. This is a consistency aid, not a content-pack requirement.
+   - For custom or no-pack worlds, set `world.pack_policy` to record whether event packs are unused, reference-only, partially adjudicating, or active.
 
 2. Create the initial state ledger.
    - Include `age`, `life_cap`, `existence_state`, `realm`, attributes, talents, relationships, flags, event history, open threads, and terminal status.
@@ -51,6 +52,7 @@ Load only what is needed:
 3. Resolve each turn in this order.
    - Interpret the user's natural-language action into an intent object.
    - Consult relevant event packs and open threads when they fit the world.
+   - If the pack is only reference material for a custom world, keep adjudication manual and use `manual_*` event ids.
    - Adjudicate what happens from state, user intent, genre, and any matching event material. If the user acts outside the listed entries, treat that action as first-class play, not as a fallback or error.
    - Apply effects to the state ledger using the turn state contract.
    - Render a complete story scene from the rule result.
@@ -96,6 +98,8 @@ When playtesting ordinary turns, `scripts/validate_state.py` can also check opti
 For strict QA or CI, add `--fail-on-warnings` to `validate_state.py` or `validate_checkpoint.py` so lifecycle drift, stale hooks, or clutter warnings fail the command instead of only appearing in JSON.
 
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
+
+For strict custom-world QA, include `world.pack_policy`. Use `mode: "none"` when no pack was consulted, `mode: "reference"` when a pack was inspected but not used for adjudication, `mode: "adjudication"` when selected pack material influenced rulings, and `mode: "active"` only with a real `world.content_pack`.
 
 When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.
 

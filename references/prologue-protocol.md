@@ -79,3 +79,13 @@ The first character card should be compact and playable:
 ```
 
 For tests, clearly label whether the prologue was manually hosted or script-assisted. If the helper script cannot produce the later-age state, report that as an engine limitation and continue manually only when the test is evaluating Game Master behavior.
+
+## Quality Checklist
+
+Before the first interactive turn, check:
+
+- The prologue explains why the character has their current attributes, talents, relationships, flags, and pressure clocks.
+- At least one past beat creates the current desire, and at least one past beat creates the current cost or risk.
+- `event_history` and `timeline` contain the prologue beats with `manual_prologue_*` ids unless a real content pack authored the beat.
+- The first scene begins at a decision point that could go at least two meaningfully different ways.
+- The prologue leaves active hooks to play now; it should not resolve the whole premise before the user acts.

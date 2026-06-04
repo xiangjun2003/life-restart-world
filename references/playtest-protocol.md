@@ -44,6 +44,8 @@ For each playtest, record:
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
 - When editing, importing, or selecting a content pack for script-assisted tests, record `scripts/validate_content_pack.py` output before play begins.
 - For custom or no-pack worlds, record whether `world.session_note` exists and whether active pressure clocks are mirrored in the top-level state ledger.
+- For custom or no-pack worlds, record whether at least one `state_axes` item and one faction are anchored in active ledger items or structured `next_affordances`; the note should not carry hidden state by itself.
+- For custom or no-pack worlds, record `world.pack_policy.mode`, any `evaluated_packs`, and whether `none` / `reference` runs kept event ids as `manual_*`.
 - For ledger stress tests, validate at least one mid-run state as well as the final state; final cleanup can hide whether the middle of play became hard to continue.
 - Any mismatch between the requested world and available event packs.
 - Any state drift, missing relationship mechanics, unclear instruction, or safety concern.

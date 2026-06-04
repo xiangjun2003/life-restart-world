@@ -46,6 +46,8 @@ INTENT_RISKS = {"none", "low", "medium", "high", "critical"}
 PRESSURE_STATUSES = {"active", "filled", "resolved", "closed", "archived", "inactive"}
 PROLOGUE_EXCEPTION_FLAGS = {"amnesia", "missing_records", "artificial_creation", "newly_created", "memory_erased", "unknown_past"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
+PACK_POLICY_MODES = {"none", "reference", "adjudication", "active"}
+NON_ADJUDICATING_PACK_POLICY_MODES = {"none", "reference"}
 INACTIVE_CLOCK_STATUSES = {"resolved", "closed", "archived", "inactive"}
 INACTIVE_EVIDENCE_STATUSES = {"resolved", "closed", "archived", "inactive", "spent"}
 PHASE_STRING_LIST_KEYS = [
@@ -366,6 +368,36 @@ def collect_known_hooks(state: dict[str, Any]) -> set[str]:
         factions = session_note.get("factions")
         if isinstance(factions, dict):
             hooks.update(str(item) for item in factions)
+    return hooks
+
+
+def collect_current_board_hooks(state: dict[str, Any]) -> set[str]:
+    hooks: set[str] = set()
+    for key in ["relationships", "pressure_clocks", "evidence"]:
+        value = state.get(key)
+        if isinstance(value, dict):
+            hooks.update(str(item) for item in value)
+    for key in ["flags", "open_threads"]:
+        value = state.get(key)
+        if isinstance(value, list):
+            hooks.update(str(item) for item in value if isinstance(item, str))
+    affordances = state.get("next_affordances")
+    if isinstance(affordances, list):
+        for item in affordances:
+            if isinstance(item, dict):
+                for key in ["state_hooks", "targets"]:
+                    value = item.get(key)
+                    if isinstance(value, list):
+                        hooks.update(str(hook) for hook in value if isinstance(hook, str))
+    intent = state.get("last_intent")
+    if isinstance(intent, dict):
+        for key in ["targets", "tags"]:
+            value = intent.get(key)
+            if isinstance(value, list):
+                hooks.update(str(hook) for hook in value if isinstance(hook, str))
+    delta = state.get("last_delta")
+    if isinstance(delta, dict):
+        hooks.update(collect_delta_hooks(delta))
     return hooks
 
 
@@ -780,11 +812,68 @@ def check_session_note_pressure_clocks(state: dict[str, Any], note: dict[str, An
                     warnings.append(f"{path}.{key}={clock[key]} differs from state.pressure_clocks.{clock_id}.{key}={state_clock[key]}; state ledger is the source of truth")
 
 
+def check_session_note_ledger_anchors(state: dict[str, Any], note: dict[str, Any], warnings: list[str]) -> None:
+    anchors = collect_current_board_hooks(state)
+    state_axes = {str(item) for item in note.get("state_axes", []) if isinstance(item, str)}
+    factions = set(note.get("factions", {})) if isinstance(note.get("factions"), dict) else set()
+    if state_axes and not (state_axes & anchors):
+        warnings.append("world.session_note.state_axes are not anchored in the active ledger or next affordances; custom world axes should appear as flags, open_threads, clock/evidence ids, relationship ids, or state_hooks")
+    if factions and not (factions & anchors):
+        warnings.append("world.session_note.factions are not anchored in the active ledger or next affordances; at least one active faction should appear as a relationship/thread/clock/evidence id or state_hook")
+
+
 def has_real_content_pack(world: dict[str, Any]) -> bool:
     content_pack = world.get("content_pack")
     if not isinstance(content_pack, str):
         return False
     return content_pack.strip().lower() not in NO_PACK_PLACEHOLDERS
+
+
+def collect_event_ids(state: dict[str, Any]) -> set[str]:
+    event_ids: set[str] = set()
+    history = state.get("event_history")
+    if isinstance(history, list):
+        event_ids.update(str(item) for item in history if isinstance(item, str))
+    timeline = state.get("timeline")
+    if isinstance(timeline, list):
+        for item in timeline:
+            if isinstance(item, dict) and isinstance(item.get("event_id"), str):
+                event_ids.add(item["event_id"])
+    return event_ids
+
+
+def check_pack_policy(state: dict[str, Any], world: dict[str, Any], content_pack_present: bool, errors: list[str], warnings: list[str]) -> None:
+    policy = world.get("pack_policy")
+    if policy is None:
+        if not content_pack_present:
+            warnings.append("custom or no-pack world should include world.pack_policy with mode none, reference, or adjudication")
+        return
+    if not isinstance(policy, dict):
+        errors.append("world.pack_policy must be an object when present")
+        return
+
+    mode = policy.get("mode")
+    if not isinstance(mode, str) or mode not in PACK_POLICY_MODES:
+        errors.append(f"world.pack_policy.mode must be one of {sorted(PACK_POLICY_MODES)}")
+        return
+
+    evaluated_packs = policy.get("evaluated_packs")
+    if evaluated_packs is not None:
+        check_string_list_value(evaluated_packs, "world.pack_policy.evaluated_packs", errors, warnings)
+    if "reason" in policy and not isinstance(policy["reason"], str):
+        errors.append("world.pack_policy.reason must be a string when present")
+
+    if content_pack_present and mode == "none":
+        warnings.append("world.pack_policy.mode=none but world.content_pack is present")
+    if not content_pack_present and mode == "active":
+        warnings.append("world.pack_policy.mode=active requires a real world.content_pack")
+    if not content_pack_present and mode in {"reference", "adjudication"}:
+        if not isinstance(evaluated_packs, list) or not any(isinstance(item, str) and item.strip() for item in evaluated_packs):
+            warnings.append(f"world.pack_policy.mode={mode} should name inspected packs in evaluated_packs")
+    if not content_pack_present and mode in NON_ADJUDICATING_PACK_POLICY_MODES:
+        non_manual_ids = sorted(event_id for event_id in collect_event_ids(state) if not event_id.startswith("manual_"))
+        if non_manual_ids:
+            warnings.append(f"world.pack_policy.mode={mode} but non-manual event ids appear without an active/adjudication pack: {non_manual_ids}")
 
 
 def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:
@@ -799,6 +888,7 @@ def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -
     if isinstance(world.get("content_pack"), str) and not has_real_content_pack(world):
         warnings.append("world.content_pack looks like a no-pack placeholder; omit content_pack for custom/no-pack worlds")
     content_pack_present = has_real_content_pack(world)
+    check_pack_policy(state, world, content_pack_present, errors, warnings)
     if not world.get("premise"):
         warnings.append("world.premise is empty")
 
@@ -837,6 +927,7 @@ def check_world(state: dict[str, Any], errors: list[str], warnings: list[str]) -
             warnings.append("custom or no-pack world.session_note.state_axes is empty")
         if not session_note.get("factions"):
             warnings.append("custom or no-pack world.session_note.factions is empty")
+        check_session_note_ledger_anchors(state, session_note, warnings)
 
 
 def check_timeline_and_history(state: dict[str, Any], errors: list[str], warnings: list[str]) -> None:

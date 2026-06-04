@@ -6,6 +6,20 @@ The session world note is reference material, not an engine. It should constrain
 
 For custom or no-pack worlds, omit `world.content_pack` rather than writing an empty string or placeholder. If a real pack is only partially relevant, name it only when it is actually being consulted and keep the session world note as the stronger source of truth for this run.
 
+Record pack usage in `world.pack_policy`:
+
+```json
+{
+  "pack_policy": {
+    "mode": "reference",
+    "evaluated_packs": ["classic-lite"],
+    "reason": "The pack was inspected for tone, but water-ticket politics are manually adjudicated."
+  }
+}
+```
+
+Use `mode: "none"` when no pack was consulted, `reference` when a pack was inspected but did not adjudicate events, `adjudication` when selected pack material influenced rulings, and `active` only with a real `world.content_pack`. For `none` or `reference`, use `manual_*` event ids so tests can see the custom world was hosted manually.
+
 ## Minimal Shape
 
 ```json
@@ -39,7 +53,9 @@ Keep it short. A good note fits in one screen and can be updated when the user a
 
 ## Validation
 
-`scripts/validate_state.py` checks the basic shape of `world.session_note` when it is present. For custom or no-pack worlds, expect warnings if the note is missing, has no `state_axes`, or has no `factions`.
+`scripts/validate_state.py` checks the basic shape of `world.session_note` when it is present. For custom or no-pack worlds, expect warnings if the note is missing, has no `state_axes`, has no `factions`, or has no `world.pack_policy`.
+
+For custom or no-pack worlds, at least one current `state_axes` item and one current faction should be anchored in the protagonist ledger or next affordances. Good anchors include relationship ids, thread ids, clock/evidence ids, `flags`, `last_delta`, `last_intent`, and structured `next_affordances.state_hooks` / `targets`. A faction mentioned only inside a prose note is context, not a structured anchor. Otherwise the session note has become hidden world state instead of playable state.
 
 Keep active pressure in the protagonist ledger. If `world.session_note.pressure_clocks` names a live clock, mirror it in top-level `pressure_clocks`; otherwise the note has become hidden state instead of context.
 
@@ -61,7 +77,7 @@ Do not require a session world note for a quick original-style run if the user w
 - `premise`, `tone`, and `boundaries` guide what counts as plausible.
 - `state_axes` become good candidates for `flags`, `open_threads`, and state summaries.
 - `state_axes` are ledger design axes, not content-pack compatibility tags. If a custom world needs compatibility diagnostics, put explicit tags in `tags`, `world_tags`, or `compatibility_tags`.
-- `factions` help relationships and consequences stay specific.
+- `factions` help relationships and consequences stay specific. Important factions should appear as active relationships, pressure sources, evidence holders, thread names, or affordance hooks when they matter to the current decision.
 - `pressure_clocks` model slow-moving threats without forcing scripted events.
 - `evidence_tracks` remind the Game Master when proof, witnesses, artifacts, or credibility matter.
 - `event_seeds` provide authored-feeling material when no content-pack event fits.

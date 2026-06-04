@@ -49,6 +49,18 @@ The simulator is narrative-first but stateful. Every turn must preserve a struct
 
 Use `world.content_pack` only for a real referenced pack such as `classic-lite`. For custom or no-pack worlds, omit the field and include `world.session_note`; do not use empty-string placeholders.
 
+Use `world.pack_policy` to make event-pack usage auditable:
+
+```json
+{
+  "mode": "reference",
+  "evaluated_packs": ["classic-lite"],
+  "reason": "Inspected for tone; adjudication stays manual for this custom setting."
+}
+```
+
+Modes are `none`, `reference`, `adjudication`, and `active`. In `none` or `reference` custom worlds, event ids should use `manual_*`; `active` should only appear with a real `world.content_pack`.
+
 ## Attributes
 
 - `CHR`: presence, charm, appearance, social first impression.
@@ -125,6 +137,7 @@ For `standard` pace, a useful default is:
 - Keep `event_history` and `timeline` aligned. A manual ruling should still have a `manual_*` event id in both places.
 - If many turns share the same `age`, add `time` so the order stays playable.
 - Close stale `open_threads` when a later event resolves or supersedes them; the snapshot should show the current board, not every idea that ever appeared.
+- For custom or no-pack worlds, do not leave `world.session_note.state_axes` and `factions` only in the note. At least one current axis and one current faction should appear in active relationships, open threads, clocks, evidence, flags, `last_delta`, `last_intent`, or `next_affordances` hooks.
 
 The current board should stay small enough to scan. As a rule of thumb, keep no more than about 2-5 active relationships, 2-5 open threads or clocks, and only evidence that can affect the next few turns. Archive inactive contacts, resolved evidence, filled clocks, old promises, and completed arcs into relationship notes, flags, timeline, or `phase_summaries`. This is about the visible/current board, not erasing protagonist history.
 
