@@ -65,7 +65,7 @@ Load only what is needed:
    - At natural phase endpoints, close or summarize stale threads into a phase summary so the current board stays playable.
    - Keep the visible board small: preserve history in timeline and phase summaries, but keep only active relationships, clocks, evidence, and threads in the current snapshot.
    - Move resolved or archived clocks/evidence out of the active board and into summaries, notes, flags, or timeline.
-   - Do not wait until the final phase endpoint to clean the board. In long arcs, if active `open_threads` or evidence are nearing 7 items, merge, close, or archive stale items before adding another major thread.
+   - Do not wait until the final phase endpoint to clean the board. In long arcs, if active `open_threads` or evidence are nearing 7 items, merge, close, or archive stale items before or during the turn that adds another major thread, so the post-turn board is already clean.
    - In investigation or school/career pressure arcs, consolidate related clues, routines, or temporary contacts into an evidence packet, relationship note, pressure clock, or carried main thread.
    - When the user asks to save, resume, hand off to another agent, or continue after a long arc, create or consume a compact state checkpoint. Keep ordinary turns light unless a checkpoint is useful.
 
@@ -86,7 +86,7 @@ python3 scripts/simulate_life.py turn --state state.json --intent intent.json --
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 python3 scripts/validate_checkpoint.py checkpoint.json
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-visible-snapshots 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --forbid-raw-state playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
@@ -100,7 +100,9 @@ When playtesting ordinary turns, `scripts/validate_state.py` can also check opti
 
 Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
 
-For player-output QA, transcript turns may include `visible_snapshot` for the compact player-facing board and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-visible-snapshots` and `--forbid-raw-state` in strict playtests. `visible_snapshot` is evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
+For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
+
+Use the canonical transcript fields above for new playtests. `validate_playtest.py` accepts a few older aliases as compatibility input, but strict QA warns on aliases so new transcripts stay consistent.
 
 For dense arcs or later-age starts where pacing matters, add playtest thresholds such as `--max-age-jump 1`, `--max-age-span 3`, or `--min-same-age-turns 2`. These are QA promises, not live-play rules. Use `--forbid-age-regression` only for ordinary chronological arcs.
 
@@ -129,4 +131,4 @@ For each playable turn, respond in this order:
 
 Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.
 
-During QA transcripts, record the player-facing current snapshot as `visible_snapshot`; do not expose full ledger JSON to the player unless they requested debug/raw state.
+During QA transcripts, record the player-facing prose as `story_scene`, the visible `变化` section as `visible_delta`, and the player-facing current snapshot as `visible_snapshot`; do not expose full ledger JSON to the player unless they requested debug/raw state. Keep `visible_delta` in player language such as "新增状态", "压力变化", or "关系变化"; do not use internal keys such as `flags_added`, `threads_added`, `intent_trace`, or `event_material` in player-facing fields.

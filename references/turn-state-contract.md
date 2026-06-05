@@ -96,6 +96,8 @@ Every durable story consequence must appear in the delta.
 
 Prefer small deltas. A vivid scene does not need many flags, but any fact that changes future play must be tracked.
 
+The player-facing `变化` section should be a readable projection of this internal delta, not a full dump of the ledger object. During playtests, record that projection as `visible_delta`; keep the internal `delta` / `last_delta` for validation and handoff. Use labels like "新增状态", "压力变化", "关系变化", or "主线变化"; do not expose internal delta keys such as `flags_added`, `threads_added`, `intent_trace`, `event_material`, or `timeline_item`.
+
 During playtests, debug output, or handoff, you may store the latest durable change set as optional `last_delta` on the state ledger. It is a one-turn audit trace, not protagonist history; replace it each turn or omit it in ordinary play. Use it to check that event IDs, flags, threads, evidence, clocks, relationships, and phase summaries named by the turn actually landed in the current ledger. If `last_delta` resolves, closes, archives, or spends evidence/clocks, those items should leave the active board but still be named in structured archive fields such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence` on `phase_summaries` or timeline items. Loose mentions in prose are useful for humans, but structured fields make handoff validation reliable.
 
 For `freeform` or `modified_entry` turns in playtests or handoff, add a compact `intent_trace` inside `last_delta`:
@@ -134,7 +136,7 @@ During playtests, record this player-facing projection as `visible_snapshot` on 
 
 If the internal ledger has many active items, prune the current board before showing it. Archive resolved or inactive relationships, evidence, clocks, and threads into `phase_summaries`, timeline, flags, or relationship notes. Keep only items that can plausibly change the next decision.
 
-If the next ruling would add a major thread or evidence item while the board is already crowded, clean up first. Merge sibling threads, convert stable background pressure into a clock or relationship note, consolidate scattered evidence into one packet, or write a mid-arc `phase_summaries` item. Do this before the validator would report too many active items, not only at the final endpoint.
+If the next ruling would add a major thread or evidence item while the board is already crowded, clean up first or in the same turn before recording `post_state`. Merge sibling threads, convert stable background pressure into a clock or relationship note, consolidate scattered evidence into one packet, or write a mid-arc `phase_summaries` item. Do this before the validator would report too many active items, not only at the final endpoint.
 
 For save/resume or agent handoff, provide a checkpoint capsule instead of the full ledger. The checkpoint should preserve the current playable state: session id, turn, age/time, realm/existence state, attributes, talents, active relationships, clocks, evidence, flags, open threads, recent timeline, and next affordances. Keep older resolved history summarized unless it still affects play.
 

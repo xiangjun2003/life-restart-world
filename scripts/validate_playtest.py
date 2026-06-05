@@ -9,6 +9,7 @@ the protagonist ledger instead of only producing prose.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,36 @@ VISIBLE_SNAPSHOT_KEYS = {
     "terminal",
     "summary",
     "current",
+}
+DISPLAY_FIELD_ALIASES = {
+    "story_scene": ["scene", "narrative_scene", "narrative"],
+    "visible_delta": ["visible_changes", "change_summary", "player_delta"],
+    "visible_snapshot": ["current_snapshot", "player_snapshot", "snapshot"],
+}
+RAW_LEDGER_DISPLAY_KEYS = {
+    "event_history",
+    "last_delta",
+    "last_intent",
+    "next_affordances",
+    "pack_policy",
+    "phase_summaries",
+    "post_state",
+    "raw_state",
+    "rng_seed",
+    "session_id",
+    "state",
+    "timeline",
+    "version",
+    "world",
+}
+RAW_DELTA_DISPLAY_KEYS = RAW_LEDGER_DISPLAY_KEYS | {
+    "event_material",
+    "flags_added",
+    "flags_removed",
+    "intent_trace",
+    "threads_added",
+    "threads_closed",
+    "timeline_item",
 }
 
 
@@ -156,12 +187,130 @@ def turn_has_affordances(turn: dict[str, Any]) -> bool:
     return False
 
 
-def turn_visible_snapshot(turn: dict[str, Any]) -> Any:
-    for key in ["visible_snapshot", "current_snapshot", "player_snapshot", "snapshot"]:
+def display_field(turn: dict[str, Any], canonical_key: str) -> tuple[str | None, Any]:
+    for key in [canonical_key, *DISPLAY_FIELD_ALIASES.get(canonical_key, [])]:
         value = turn.get(key)
         if value is not None:
-            return value
-    return None
+            return key, value
+    return None, None
+
+
+def turn_visible_snapshot(turn: dict[str, Any]) -> Any:
+    return display_field(turn, "visible_snapshot")[1]
+
+
+def turn_story_scene(turn: dict[str, Any]) -> Any:
+    return display_field(turn, "story_scene")[1]
+
+
+def turn_visible_delta(turn: dict[str, Any]) -> Any:
+    return display_field(turn, "visible_delta")[1]
+
+
+def collect_nested_keys(value: Any) -> set[str]:
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            keys.add(str(key))
+            keys.update(collect_nested_keys(item))
+    elif isinstance(value, list):
+        for item in value:
+            keys.update(collect_nested_keys(item))
+    return keys
+
+
+def raw_key_markers_in_text(value: Any, raw_keys: set[str]) -> set[str]:
+    if isinstance(value, str):
+        markers = set()
+        for key in raw_keys:
+            escaped = re.escape(key)
+            if f'"{key}"' in value or f"'{key}'" in value:
+                markers.add(key)
+            elif "_" in key and re.search(rf"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])", value):
+                markers.add(key)
+            elif re.search(rf"(?<![A-Za-z0-9_]){escaped}\s*[:=]", value):
+                markers.add(key)
+        return markers
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        for item in value.values():
+            keys.update(raw_key_markers_in_text(item, raw_keys))
+    elif isinstance(value, list):
+        for item in value:
+            keys.update(raw_key_markers_in_text(item, raw_keys))
+    return keys
+
+
+def check_display_alias(turn: dict[str, Any], canonical_key: str, index: int, warnings: list[str]) -> None:
+    key, _ = display_field(turn, canonical_key)
+    if key is not None and key != canonical_key:
+        warnings.append(f"turns[{index}].{key} is accepted as a compatibility alias; prefer canonical {canonical_key}")
+
+
+def check_no_rawish_display_field(field_name: str, value: Any, index: int, raw_keys: set[str], warnings: list[str]) -> None:
+    nested = collect_nested_keys(value)
+    overlap = sorted(nested & raw_keys)
+    if overlap:
+        warnings.append(f"turns[{index}].{field_name} looks like raw ledger/debug data; remove internal keys: {overlap}")
+    text_overlap = sorted(raw_key_markers_in_text(value, raw_keys))
+    if text_overlap:
+        warnings.append(f"turns[{index}].{field_name} appears to quote raw ledger keys: {text_overlap}")
+
+
+def has_textish_content(value: Any) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, list):
+        return any(has_textish_content(item) for item in value)
+    if isinstance(value, dict):
+        return any(item not in (None, "", [], {}) for item in value.values())
+    return False
+
+
+def textish_length(value: Any) -> int:
+    if isinstance(value, str):
+        return len(value.strip())
+    if isinstance(value, list):
+        return sum(textish_length(item) for item in value)
+    if isinstance(value, dict):
+        return sum(textish_length(item) for item in value.values())
+    return 0
+
+
+def has_story_scene(turn: dict[str, Any]) -> bool:
+    return has_textish_content(turn_story_scene(turn))
+
+
+def has_visible_delta(turn: dict[str, Any]) -> bool:
+    return has_textish_content(turn_visible_delta(turn))
+
+
+def check_story_scene(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    check_display_alias(turn, "story_scene", index, warnings)
+    scene = turn_story_scene(turn)
+    if scene is None:
+        return
+    if not isinstance(scene, (str, list, dict)):
+        warnings.append(f"turns[{index}].story_scene should be a string, list, or object")
+        return
+    if not has_textish_content(scene):
+        warnings.append(f"turns[{index}].story_scene is empty")
+    elif textish_length(scene) < 20:
+        warnings.append(f"turns[{index}].story_scene is very short; record scene prose, not only an event title")
+    check_no_rawish_display_field("story_scene", scene, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
+
+
+def check_visible_delta(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    check_display_alias(turn, "visible_delta", index, warnings)
+    delta = turn_visible_delta(turn)
+    if delta is None:
+        return
+    if not isinstance(delta, (str, list, dict)):
+        warnings.append(f"turns[{index}].visible_delta should be a string, list, or object")
+        return
+    if not has_textish_content(delta):
+        warnings.append(f"turns[{index}].visible_delta is empty")
+    check_no_rawish_display_field("visible_delta", delta, index, RAW_DELTA_DISPLAY_KEYS, warnings)
 
 
 def has_visible_snapshot(turn: dict[str, Any]) -> bool:
@@ -185,12 +334,15 @@ def visible_snapshot_board_keys(turn: dict[str, Any]) -> set[str]:
 
 
 def check_visible_snapshot(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    check_display_alias(turn, "visible_snapshot", index, warnings)
     snapshot = turn_visible_snapshot(turn)
     if snapshot is None:
         return
     if isinstance(snapshot, str):
         if not snapshot.strip():
             warnings.append(f"turns[{index}].visible_snapshot is empty")
+        else:
+            check_no_rawish_display_field("visible_snapshot", snapshot, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
         return
     if not isinstance(snapshot, dict):
         warnings.append(f"turns[{index}].visible_snapshot should be a string or object")
@@ -200,6 +352,7 @@ def check_visible_snapshot(turn: dict[str, Any], index: int, warnings: list[str]
         return
     if not visible_snapshot_board_keys(turn):
         warnings.append(f"turns[{index}].visible_snapshot has no recognizable board fields")
+    check_no_rawish_display_field("visible_snapshot", snapshot, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
 
 
 def raw_state_exposed(turn: dict[str, Any]) -> bool:
@@ -429,6 +582,8 @@ def validate(
     min_same_age_turns: int = 0,
     forbid_age_regression: bool = False,
     min_visible_snapshots: int = 0,
+    min_story_scenes: int = 0,
+    min_visible_deltas: int = 0,
     forbid_raw_state: bool = False,
 ) -> dict[str, Any]:
     errors: list[str] = []
@@ -456,6 +611,8 @@ def validate(
     modified_entry_turns = 0
     turns_with_delta = 0
     turns_with_affordances = 0
+    turns_with_story_scene = 0
+    turns_with_visible_delta = 0
     per_turn_state_snapshots = 0
     turns_with_visible_snapshot = 0
     structured_visible_snapshots = 0
@@ -485,6 +642,12 @@ def validate(
             turns_with_delta += 1
         else:
             warnings.append(f"turns[{index}] has no delta or post-state last_delta")
+        if has_story_scene(turn):
+            turns_with_story_scene += 1
+        check_story_scene(turn, index, warnings)
+        if has_visible_delta(turn):
+            turns_with_visible_delta += 1
+        check_visible_delta(turn, index, warnings)
         if turn_has_affordances(turn):
             turns_with_affordances += 1
         else:
@@ -515,6 +678,10 @@ def validate(
         warnings.append("playtest has no recorded next_affordances")
     if turns_with_visible_snapshot < min_visible_snapshots:
         warnings.append(f"playtest has {turns_with_visible_snapshot} visible snapshots; expected at least {min_visible_snapshots}")
+    if turns_with_story_scene < min_story_scenes:
+        warnings.append(f"playtest has {turns_with_story_scene} story scenes; expected at least {min_story_scenes}")
+    if turns_with_visible_delta < min_visible_deltas:
+        warnings.append(f"playtest has {turns_with_visible_delta} visible deltas; expected at least {min_visible_deltas}")
     if forbid_raw_state and disallowed_raw_state_exposed_turns:
         warnings.append(f"raw state was exposed on {disallowed_raw_state_exposed_turns} turns without debug/raw_state_requested")
 
@@ -568,6 +735,8 @@ def validate(
         "freeform_turns": freeform_turns,
         "modified_entry_turns": modified_entry_turns,
         "turns_with_delta": turns_with_delta,
+        "turns_with_story_scene": turns_with_story_scene,
+        "turns_with_visible_delta": turns_with_visible_delta,
         "turns_with_affordances": turns_with_affordances,
         "turns_with_visible_snapshot": turns_with_visible_snapshot,
         "structured_visible_snapshots": structured_visible_snapshots,
@@ -583,7 +752,7 @@ def validate(
 
 
 def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
@@ -598,6 +767,8 @@ def main(argv: list[str]) -> int:
     min_freeform = 0
     min_modified_entry = 0
     min_visible_snapshots = 0
+    min_story_scenes = 0
+    min_visible_deltas = 0
     max_age_jump: int | None = None
     max_age_span: int | None = None
     min_same_age_turns = 0
@@ -606,6 +777,8 @@ def main(argv: list[str]) -> int:
         ("--min-freeform", "min_freeform"),
         ("--min-modified-entry", "min_modified_entry"),
         ("--min-visible-snapshots", "min_visible_snapshots"),
+        ("--min-story-scenes", "min_story_scenes"),
+        ("--min-visible-deltas", "min_visible_deltas"),
         ("--max-age-jump", "max_age_jump"),
         ("--max-age-span", "max_age_span"),
         ("--min-same-age-turns", "min_same_age_turns"),
@@ -626,6 +799,10 @@ def main(argv: list[str]) -> int:
             min_modified_entry = value
         elif target == "min_visible_snapshots":
             min_visible_snapshots = value
+        elif target == "min_story_scenes":
+            min_story_scenes = value
+        elif target == "min_visible_deltas":
+            min_visible_deltas = value
         elif target == "max_age_jump":
             max_age_jump = value
         elif target == "max_age_span":
@@ -651,6 +828,8 @@ def main(argv: list[str]) -> int:
         min_same_age_turns=min_same_age_turns,
         forbid_age_regression=forbid_age_regression,
         min_visible_snapshots=min_visible_snapshots,
+        min_story_scenes=min_story_scenes,
+        min_visible_deltas=min_visible_deltas,
         forbid_raw_state=forbid_raw_state,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))

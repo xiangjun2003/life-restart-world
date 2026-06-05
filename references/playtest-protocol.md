@@ -40,6 +40,8 @@ For each playtest, record:
 - Whether inactive clocks/evidence named by `last_delta` are absent from the active board but present in structured archive fields such as `closed_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence`.
 - Whether the current board stays scannable: only active relationships, clocks, evidence, and threads remain visible; old material moves into phase summaries, flags, notes, or timeline.
 - For 10-14 turn school, career, investigation, or faction arcs, whether a mid-arc cleanup happened around turns 6-8 or before active threads/evidence neared 7 items.
+- Whether each turn includes actual player-facing scene prose, not only an event title or state mutation. In JSON transcripts, record the prose or a faithful excerpt as `story_scene`.
+- Whether each turn includes a player-facing change summary, not only the internal delta. In JSON transcripts, record it as `visible_delta`.
 - Whether each ordinary turn exposed a compact player-facing current snapshot, not raw ledger JSON. In JSON transcripts, record that projection as `visible_snapshot` and mark `raw_state_exposed: false` unless the player explicitly requested debug/raw state.
 - For pacing-sensitive tests, record age span, largest age jump, and same-age transitions. The goal is not to forbid jumps; it is to make accidental speedruns visible.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
@@ -77,10 +79,10 @@ For multi-turn QA, testers may also produce a compact JSON transcript and run:
 python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
 ```
 
-For strict player-output QA, require a visible board each turn and forbid raw ledger exposure:
+For strict player-output QA, require story prose, a visible change summary, and a visible board each turn, and forbid raw ledger exposure:
 
 ```bash
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-visible-snapshots 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --forbid-raw-state playtest.json
 ```
 
 For dense phases, add pacing gates that match the test promise:
@@ -106,6 +108,12 @@ Minimal transcript shape:
       "user_action": "选 2，但先向老师隐瞒家里的水票账本",
       "intent_source": "modified_entry",
       "event_ids": ["manual_turn_archive_access"],
+      "story_scene": "李老师把旧资料推到你面前时，你没有立刻提账本。你先问水票缺口能不能从公开栏核对，等老师点头后才把家里那部分线索压在心里。",
+      "visible_delta": {
+        "关系变化": "李老师更愿意帮你查公开材料",
+        "新增线索": ["water_ticket_case"],
+        "压力变化": "家里账本仍被你暂时隐瞒，后续有暴露风险"
+      },
       "visible_snapshot": {
         "age": 12,
         "time": "12岁秋，放学后",
@@ -126,17 +134,38 @@ Minimal transcript shape:
       "next_affordances": [
         {"label": "核对水票", "state_hooks": ["water_ticket_case"], "targets": ["mother"], "risk": "low"},
         {"label": "追问行会", "state_hooks": ["audit_retaliation"], "targets": ["water_guild"], "risk": "high"}
-      ],
-      "post_state": {}
+      ]
     }
-  ],
-  "final_state": {}
+  ]
 }
 ```
 
-`post_state` and `final_state` should be real ledgers when used; `{}` is only a shape placeholder. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
+Add real `post_state`, `mid_state`, and `final_state` ledgers when validating a full transcript; they are omitted above rather than shown as `{}` placeholders because any object in those fields is treated as a real ledger. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
 
-`visible_snapshot` is the player-facing projection of the current board. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
+`story_scene`, `visible_delta`, and `visible_snapshot` are the player-facing projection of the turn: prose, changes, and current board. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
+
+Use the canonical field names above for new transcripts. `validate_playtest.py` accepts a few older aliases such as `scene`, `change_summary`, or `current_snapshot` for compatibility, but strict QA warns on aliases.
+
+For dense no-pack investigations, include one mid-arc cleanup turn before the active board overloads. A useful pattern is:
+
+```json
+{
+  "event_ids": ["manual_mid_arc_evidence_cleanup"],
+  "story_scene": "The protagonist lays out the scattered notes, removes names that lack consent, and turns the remaining public records into one careful packet.",
+  "visible_delta": {
+    "主线变化": "零散线索合并为一个可讨论的证据包",
+    "压力变化": "报复风险没有消失，但材料更稳",
+    "移出当前面板": ["raw_shift_notes", "print_cache_copy", "temporary_interview_line"]
+  },
+  "delta": {
+    "threads_closed": ["raw_shift_notes", "print_cache_probe", "temporary_interview_line"],
+    "threads_added": ["evidence_packet_review"],
+    "event_material": ["manual_mid_arc_evidence_cleanup"]
+  }
+}
+```
+
+The visible fields use player language; the internal `delta` keeps ledger keys for validation. In the same or following `post_state`, closed threads/evidence should be absent from the active board and referenced in `phase_summaries`, timeline, or structured archive fields.
 
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 

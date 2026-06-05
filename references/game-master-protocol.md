@@ -147,7 +147,7 @@ After phase closure, do not keep old resolved threads, clocks, or evidence in th
 
 Board hygiene matters more in long lives than in one-shot scenes. If the visible snapshot starts listing too many active people, clocks, evidence items, or threads, stop and archive stale items before offering the next entries. The player should see the current decision pressure, not the whole biography.
 
-Use mid-arc cleanup when a 10-14 turn phase is still underway but the board is getting crowded. As a practical trigger, if active `open_threads`, evidence, or relationships are nearing 7 items and the next event would add more, first merge or archive stale material. This is not a fast-forward; it is a ledger cleanup beat inside the current playable phase.
+Use mid-arc cleanup when a 10-14 turn phase is still underway but the board is getting crowded. As a practical trigger, if active `open_threads`, evidence, or relationships are nearing 7 items and the next event would add more, merge or archive stale material before the post-turn state is recorded. This is not a fast-forward; it is a ledger cleanup beat inside the current playable phase.
 
 Examples:
 
@@ -274,6 +274,16 @@ Every turn should include:
 Action entries are affordances, not restrictions. Avoid phrasing that implies the user can only choose listed options.
 
 Good action entries are concrete enough to act on and different enough to create real agency. In most turns, include a steady option, a risky or costly option, and a relationship or faction-facing option. Add a world-specific or talent-specific option when the state supports it.
+
+For playtest transcripts, record the player-facing sections separately:
+
+- `story_scene`: the actual scene prose or a faithful excerpt, not only the event title.
+- `visible_delta`: the visible `变化` section or a compact equivalent.
+- `visible_snapshot`: the visible `当前` section or character board.
+
+These are transcript evidence only. Ordinary play should remain natural-language prose and compact boards, not raw ledger JSON.
+
+Do not put internal ledger/debug keys such as `event_history`, `timeline`, `last_delta`, `last_intent`, `next_affordances`, `world`, `session_id`, or `version` inside these player-facing fields. Likewise, `visible_delta` should use player labels such as "新增状态" or "主线变化", not raw keys such as `flags_added`, `threads_added`, `intent_trace`, `event_material`, or `timeline_item`. If a raw/debug view was requested, mark that separately instead of disguising it as the visible scene, delta, or snapshot.
 
 ## Checkpoint And Resume
 
