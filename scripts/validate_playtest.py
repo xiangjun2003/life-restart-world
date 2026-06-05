@@ -250,7 +250,110 @@ def has_phase_endpoint(transcript: dict[str, Any], states: list[tuple[str, dict[
     return False
 
 
-def validate(transcript: dict[str, Any], *, min_turns: int = 0, min_freeform: int = 0, min_modified_entry: int = 0) -> dict[str, Any]:
+def state_time_label(state: dict[str, Any]) -> str | None:
+    time_value = state.get("time")
+    if isinstance(time_value, dict) and isinstance(time_value.get("label"), str) and time_value["label"].strip():
+        return time_value["label"]
+    if isinstance(time_value, str) and time_value.strip():
+        return time_value
+    return None
+
+
+def state_age_point(path: str, state: Any) -> tuple[str, int, str | None] | None:
+    if not isinstance(state, dict):
+        return None
+    age = validate_state.int_or_none(state.get("age"))
+    if age is None:
+        return None
+    return path, age, state_time_label(state)
+
+
+def turn_time_label(turn: dict[str, Any], key: str) -> str | None:
+    candidates = [f"time_{key.removeprefix('age_')}", "time"]
+    for candidate in candidates:
+        value = turn.get(candidate)
+        if isinstance(value, str) and value.strip():
+            return value
+        if isinstance(value, dict) and isinstance(value.get("label"), str) and value["label"].strip():
+            return value["label"]
+    return None
+
+
+def turn_age_point(index: int, turn: dict[str, Any]) -> tuple[str, int, str | None] | None:
+    point = state_age_point(f"turns[{index}].post_state", turn.get("post_state"))
+    if point is not None:
+        return point
+    for key in ["age_after", "age"]:
+        age = validate_state.int_or_none(turn.get(key))
+        if age is not None:
+            return f"turns[{index}].{key}", age, turn_time_label(turn, key)
+    return None
+
+
+def age_points_from_transcript(transcript: dict[str, Any]) -> list[tuple[str, int, str | None]]:
+    points: list[tuple[str, int, str | None]] = []
+    initial = state_age_point("initial_state", transcript.get("initial_state"))
+    if initial is not None:
+        points.append(initial)
+    turns = transcript.get("turns")
+    if isinstance(turns, list):
+        for index, turn in enumerate(turns):
+            if isinstance(turn, dict):
+                point = turn_age_point(index, turn)
+                if point is not None:
+                    points.append(point)
+    final = state_age_point("final_state", transcript.get("final_state"))
+    if final is not None and (not points or points[-1][1] != final[1]):
+        points.append(final)
+    return points
+
+
+def pacing_metrics(points: list[tuple[str, int, str | None]]) -> dict[str, Any]:
+    if not points:
+        return {
+            "age_points": [],
+            "age_start": None,
+            "age_end": None,
+            "age_span": None,
+            "max_age_jump": None,
+            "same_age_transitions": 0,
+            "same_age_missing_time": [],
+            "age_regressions": [],
+        }
+    jumps = [after[1] - before[1] for before, after in zip(points, points[1:])]
+    regressions = [
+        {"from": before[0], "to": after[0], "before": before[1], "after": after[1]}
+        for before, after in zip(points, points[1:])
+        if after[1] < before[1]
+    ]
+    same_age_missing_time = [
+        {"from": before[0], "to": after[0], "age": after[1]}
+        for before, after in zip(points, points[1:])
+        if after[1] == before[1] and (not before[2] or not after[2])
+    ]
+    return {
+        "age_points": [{"path": path, "age": age, "time": time_label} for path, age, time_label in points],
+        "age_start": points[0][1],
+        "age_end": points[-1][1],
+        "age_span": points[-1][1] - points[0][1],
+        "max_age_jump": max(jumps) if jumps else 0,
+        "same_age_transitions": sum(1 for jump in jumps if jump == 0),
+        "same_age_missing_time": same_age_missing_time,
+        "age_regressions": regressions,
+    }
+
+
+def validate(
+    transcript: dict[str, Any],
+    *,
+    min_turns: int = 0,
+    min_freeform: int = 0,
+    min_modified_entry: int = 0,
+    max_age_jump: int | None = None,
+    max_age_span: int | None = None,
+    min_same_age_turns: int = 0,
+    forbid_age_regression: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     state_results: list[dict[str, Any]] = []
@@ -336,6 +439,21 @@ def validate(transcript: dict[str, Any], *, min_turns: int = 0, min_freeform: in
     if not isinstance(transcript.get("final_state"), dict):
         warnings.append("playtest.final_state is missing; endpoint state is harder to verify")
 
+    pacing = pacing_metrics(age_points_from_transcript(transcript))
+    pacing_gate_active = max_age_jump is not None or max_age_span is not None or min_same_age_turns > 0 or forbid_age_regression
+    if pacing_gate_active and len(pacing["age_points"]) < 2:
+        warnings.append("pacing gates need at least two age points; include initial_state/final_state, per-turn post_state, or age_after")
+    if pacing_gate_active and pacing["same_age_missing_time"]:
+        warnings.append(f"same-age pacing points are missing time labels: {pacing['same_age_missing_time']}")
+    if forbid_age_regression and pacing["age_regressions"]:
+        warnings.append(f"age decreases across transcript points: {pacing['age_regressions']}")
+    if max_age_jump is not None and pacing["max_age_jump"] is not None and pacing["max_age_jump"] > max_age_jump:
+        warnings.append(f"max age jump is {pacing['max_age_jump']}; expected at most {max_age_jump}")
+    if max_age_span is not None and pacing["age_span"] is not None and pacing["age_span"] > max_age_span:
+        warnings.append(f"age span is {pacing['age_span']}; expected at most {max_age_span}")
+    if pacing["same_age_transitions"] < min_same_age_turns:
+        warnings.append(f"playtest has {pacing['same_age_transitions']} same-age transitions; expected at least {min_same_age_turns}")
+
     worlds = [(f"{path}.world", state.get("world")) for path, state in states if isinstance(state.get("world"), dict)]
     top_world = transcript.get("world")
     if isinstance(top_world, dict):
@@ -360,22 +478,35 @@ def validate(transcript: dict[str, Any], *, min_turns: int = 0, min_freeform: in
         "named_state_snapshots": named_state_snapshots,
         "state_snapshots": len(states),
         "phase_endpoint": has_phase_endpoint(transcript, states),
+        "pacing": pacing,
     }
     return {"ok": not errors, "errors": errors, "warnings": warnings, "metrics": metrics, "state_results": state_results}
 
 
 def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
         return 0
     fail_on_warnings = "--fail-on-warnings" in args
     args = [arg for arg in args if arg != "--fail-on-warnings"]
+    forbid_age_regression = "--forbid-age-regression" in args
+    args = [arg for arg in args if arg != "--forbid-age-regression"]
     min_turns = 0
     min_freeform = 0
     min_modified_entry = 0
-    for option, target in [("--min-turns", "min_turns"), ("--min-freeform", "min_freeform"), ("--min-modified-entry", "min_modified_entry")]:
+    max_age_jump: int | None = None
+    max_age_span: int | None = None
+    min_same_age_turns = 0
+    for option, target in [
+        ("--min-turns", "min_turns"),
+        ("--min-freeform", "min_freeform"),
+        ("--min-modified-entry", "min_modified_entry"),
+        ("--max-age-jump", "max_age_jump"),
+        ("--max-age-span", "max_age_span"),
+        ("--min-same-age-turns", "min_same_age_turns"),
+    ]:
         if option not in args:
             continue
         index = args.index(option)
@@ -390,6 +521,12 @@ def main(argv: list[str]) -> int:
             min_freeform = value
         elif target == "min_modified_entry":
             min_modified_entry = value
+        elif target == "max_age_jump":
+            max_age_jump = value
+        elif target == "max_age_span":
+            max_age_span = value
+        elif target == "min_same_age_turns":
+            min_same_age_turns = value
         args = args[:index] + args[index + 2 :]
     if len(args) != 1:
         print(usage, file=sys.stderr)
@@ -399,7 +536,16 @@ def main(argv: list[str]) -> int:
     except Exception as exc:  # noqa: BLE001 - this is a CLI diagnostic helper.
         print(json.dumps({"ok": False, "errors": [f"could not load playtest: {exc}"], "warnings": []}, ensure_ascii=False, indent=2))
         return 1
-    result = validate(transcript, min_turns=min_turns, min_freeform=min_freeform, min_modified_entry=min_modified_entry)
+    result = validate(
+        transcript,
+        min_turns=min_turns,
+        min_freeform=min_freeform,
+        min_modified_entry=min_modified_entry,
+        max_age_jump=max_age_jump,
+        max_age_span=max_age_span,
+        min_same_age_turns=min_same_age_turns,
+        forbid_age_regression=forbid_age_regression,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not result["ok"]:
         return 1

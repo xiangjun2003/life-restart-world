@@ -98,6 +98,8 @@ When playtesting ordinary turns, `scripts/validate_state.py` can also check opti
 
 Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
 
+For dense arcs or later-age starts where pacing matters, add playtest thresholds such as `--max-age-jump 1`, `--max-age-span 3`, or `--min-same-age-turns 2`. These are QA promises, not live-play rules. Use `--forbid-age-regression` only for ordinary chronological arcs.
+
 For strict QA or CI, add `--fail-on-warnings` to `validate_state.py`, `validate_checkpoint.py`, or `validate_playtest.py` so lifecycle drift, stale hooks, clutter warnings, or insufficient transcript evidence fail the command instead of only appearing in JSON.
 
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.

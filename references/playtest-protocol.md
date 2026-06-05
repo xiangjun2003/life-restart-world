@@ -39,6 +39,7 @@ For each playtest, record:
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - Whether inactive clocks/evidence named by `last_delta` are absent from the active board but present in structured archive fields such as `closed_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence`.
 - Whether the current board stays scannable: only active relationships, clocks, evidence, and threads remain visible; old material moves into phase summaries, flags, notes, or timeline.
+- For pacing-sensitive tests, record age span, largest age jump, and same-age transitions. The goal is not to forbid jumps; it is to make accidental speedruns visible.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - For save/resume tests, record `scripts/validate_checkpoint.py` output before reconstructing the full ledger, then record `scripts/validate_state.py` output after resuming.
 - Any validator warnings, especially timeline/history mismatch, missing `time` for same-age turns, evidence without holders, or too many open threads.
@@ -73,6 +74,16 @@ For multi-turn QA, testers may also produce a compact JSON transcript and run:
 ```bash
 python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
 ```
+
+For dense phases, add pacing gates that match the test promise:
+
+```bash
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --max-age-jump 1 --max-age-span 3 playtest.json
+```
+
+Use pacing gates for investigations, exam weeks, career crises, sect trials, hearings, relationships, or other arcs that should stay textured. Do not use them for explicit速通, long-life cultivation spans, immortality, ascension, or user-requested fast-forward unless the test is specifically about catching over-compression.
+
+Pacing metrics use `initial_state`, per-turn `post_state` or `age_after`, and `final_state`. A turn-level `state` is validated as a state snapshot but is not pacing evidence because some transcripts use it for pre-turn state. Metrics include each age point's `time` label when available, and pacing gates warn when same-age transitions lack time labels. Use `--forbid-age-regression` only when the test promises ordinary chronological time; do not use it for reincarnation, memory rewind, time loops, or realm transitions that intentionally reset age.
 
 Minimal transcript shape:
 
