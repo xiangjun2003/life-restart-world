@@ -86,7 +86,7 @@ python3 scripts/simulate_life.py turn --state state.json --intent intent.json --
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 python3 scripts/validate_checkpoint.py checkpoint.json
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
@@ -100,7 +100,7 @@ When playtesting ordinary turns, `scripts/validate_state.py` can also check opti
 
 Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
 
-For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
+For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, `visible_actions` for the 2-4 player-facing action entries, `freeform_reminder` for the reminder that the user can act freely, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, `--min-visible-actions`, `--min-freeform-reminders`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
 
 Use the canonical transcript fields above for new playtests. `validate_playtest.py` accepts a few older aliases as compatibility input, but strict QA warns on aliases so new transcripts stay consistent.
 
@@ -131,4 +131,4 @@ For each playable turn, respond in this order:
 
 Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.
 
-During QA transcripts, record the player-facing prose as `story_scene`, the visible `变化` section as `visible_delta`, and the player-facing current snapshot as `visible_snapshot`; do not expose full ledger JSON to the player unless they requested debug/raw state. Keep `visible_delta` in player language such as "新增状态", "压力变化", or "关系变化"; do not use internal keys such as `flags_added`, `threads_added`, `intent_trace`, or `event_material` in player-facing fields.
+During QA transcripts, record the player-facing prose as `story_scene`, the visible `变化` section as `visible_delta`, the player-facing current snapshot as `visible_snapshot`, the listed actions as `visible_actions`, and the free-action reminder as `freeform_reminder`; do not expose full ledger JSON to the player unless they requested debug/raw state. Keep `visible_delta` in player language such as "新增状态", "压力变化", or "关系变化"; do not use internal keys such as `flags_added`, `threads_added`, `intent_trace`, or `event_material` in player-facing fields. Keep `visible_actions` as player labels, not internal `state_hooks` / `targets` objects, and keep the free-action reminder separate from the action entries.

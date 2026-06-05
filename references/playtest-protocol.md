@@ -35,6 +35,7 @@ For each playtest, record:
 - At least one selected-entry modification or free-form action, with `intent.source` preserved as `modified_entry` or `freeform` in notes.
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON. For live-turn QA, include optional structured `next_affordances`, `last_intent`, and `last_delta` in at least one mid-run state.
 - For a `modified_entry` or `freeform` turn, whether `last_delta.intent_trace` names the preserved custom action and points to real or newly changed ledger hooks.
+- For a `modified_entry` or `freeform` turn, include enough same-turn evidence for each `last_delta.intent_trace.state_hooks` item. Either the hook should be changed by that turn's `delta`, or the turn should include a `post_state` showing the hook is already real on the ledger.
 - Whether phase endpoints close/summarize stale threads instead of carrying every old thread forward.
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - Whether inactive clocks/evidence named by `last_delta` are absent from the active board but present in structured archive fields such as `closed_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence`.
@@ -43,6 +44,8 @@ For each playtest, record:
 - Whether each turn includes actual player-facing scene prose, not only an event title or state mutation. In JSON transcripts, record the prose or a faithful excerpt as `story_scene`.
 - Whether each turn includes a player-facing change summary, not only the internal delta. In JSON transcripts, record it as `visible_delta`.
 - Whether each ordinary turn exposed a compact player-facing current snapshot, not raw ledger JSON. In JSON transcripts, record that projection as `visible_snapshot` and mark `raw_state_exposed: false` unless the player explicitly requested debug/raw state.
+- Whether each ordinary turn offered 2-4 player-facing action entries as affordances, not a locked menu. In JSON transcripts, record them as `visible_actions`.
+- Whether each ordinary turn reminded the user they can answer freely. In JSON transcripts, record the actual player-facing reminder text as `freeform_reminder`.
 - For pacing-sensitive tests, record age span, largest age jump, and same-age transitions. The goal is not to forbid jumps; it is to make accidental speedruns visible.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - For save/resume tests, record `scripts/validate_checkpoint.py` output before reconstructing the full ledger, then record `scripts/validate_state.py` output after resuming.
@@ -82,13 +85,19 @@ python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-free
 For strict player-output QA, require story prose, a visible change summary, and a visible board each turn, and forbid raw ledger exposure:
 
 ```bash
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
 ```
 
 For dense phases, add pacing gates that match the test promise:
 
 ```bash
 python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --max-age-jump 1 --max-age-span 3 playtest.json
+```
+
+For dense school, career, medical, investigation, hearing, or relationship arcs, combine player-output QA and pacing gates:
+
+```bash
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --max-age-jump 1 --max-age-span 1 --min-same-age-turns 6 --forbid-raw-state playtest.json
 ```
 
 Use pacing gates for investigations, exam weeks, career crises, sect trials, hearings, relationships, or other arcs that should stay textured. Do not use them for explicit速通, long-life cultivation spans, immortality, ascension, or user-requested fast-forward unless the test is specifically about catching over-compression.
@@ -122,6 +131,12 @@ Minimal transcript shape:
         "pressure": {"family_budget": "3/5"},
         "threads": ["water_ticket_case", "exam_path"]
       },
+      "visible_actions": [
+        "核对公开水票记录，但不提家里账本",
+        "请李老师教你怎么做不伤人的查证",
+        "先回家观察母亲对这件事的态度"
+      ],
+      "freeform_reminder": "也可以直接说你想做什么，或改写其中一个做法。",
       "raw_state_exposed": false,
       "delta": {
         "intent_trace": {
@@ -142,7 +157,7 @@ Minimal transcript shape:
 
 Add real `post_state`, `mid_state`, and `final_state` ledgers when validating a full transcript; they are omitted above rather than shown as `{}` placeholders because any object in those fields is treated as a real ledger. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
 
-`story_scene`, `visible_delta`, and `visible_snapshot` are the player-facing projection of the turn: prose, changes, and current board. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
+`story_scene`, `visible_delta`, `visible_snapshot`, `visible_actions`, and `freeform_reminder` are the player-facing projection of the turn: prose, changes, current board, action handles, and free-action permission. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
 
 Use the canonical field names above for new transcripts. `validate_playtest.py` accepts a few older aliases such as `scene`, `change_summary`, or `current_snapshot` for compatibility, but strict QA warns on aliases.
 
@@ -166,6 +181,8 @@ For dense no-pack investigations, include one mid-arc cleanup turn before the ac
 ```
 
 The visible fields use player language; the internal `delta` keeps ledger keys for validation. In the same or following `post_state`, closed threads/evidence should be absent from the active board and referenced in `phase_summaries`, timeline, or structured archive fields.
+
+`visible_actions` should be 2-4 strings or label-only objects. Put `state_hooks`, `targets`, `risk`, and other design metadata in `next_affordances`, not in the player-facing field. `freeform_reminder` should be the actual text the player saw, such as "也可以直接说你想做什么"; do not count that reminder as one of the action entries. A bare `true` is only compatibility evidence and fails strict QA with `--fail-on-warnings`.
 
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 

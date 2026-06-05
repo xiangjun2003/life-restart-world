@@ -4,6 +4,8 @@ Use this when the user wants to start after birth: "从12岁开始", "大学毕�
 
 The goal is not to play every prior turn. The goal is to produce a causally grounded starting state that gives the user a real first playable moment.
 
+Do this manually when the helper script cannot create the requested age or situation. `simulate_life.py` can spot-check ordinary birth-to-age stepping, but it is not a later-age prologue generator and must not replace a causally grounded start state.
+
 ## Procedure
 
 1. Identify the requested start point.

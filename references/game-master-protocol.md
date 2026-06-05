@@ -280,10 +280,12 @@ For playtest transcripts, record the player-facing sections separately:
 - `story_scene`: the actual scene prose or a faithful excerpt, not only the event title.
 - `visible_delta`: the visible `变化` section or a compact equivalent.
 - `visible_snapshot`: the visible `当前` section or character board.
+- `visible_actions`: the 2-4 player-facing action labels.
+- `freeform_reminder`: the line reminding the user they can answer freely.
 
 These are transcript evidence only. Ordinary play should remain natural-language prose and compact boards, not raw ledger JSON.
 
-Do not put internal ledger/debug keys such as `event_history`, `timeline`, `last_delta`, `last_intent`, `next_affordances`, `world`, `session_id`, or `version` inside these player-facing fields. Likewise, `visible_delta` should use player labels such as "新增状态" or "主线变化", not raw keys such as `flags_added`, `threads_added`, `intent_trace`, `event_material`, or `timeline_item`. If a raw/debug view was requested, mark that separately instead of disguising it as the visible scene, delta, or snapshot.
+Do not put internal ledger/debug keys such as `event_history`, `timeline`, `last_delta`, `last_intent`, `next_affordances`, `world`, `session_id`, or `version` inside these player-facing fields. Likewise, `visible_delta` should use player labels such as "新增状态" or "主线变化", not raw keys such as `flags_added`, `threads_added`, `intent_trace`, `event_material`, or `timeline_item`; `visible_actions` should not expose `state_hooks`, `targets`, `tags`, `risk`, or intent metadata, and the free-action reminder should stay in `freeform_reminder` rather than being counted as an action. If a raw/debug view was requested, mark that separately instead of disguising it as the visible scene, delta, snapshot, or actions.
 
 ## Checkpoint And Resume
 

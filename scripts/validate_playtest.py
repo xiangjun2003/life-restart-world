@@ -45,6 +45,8 @@ DISPLAY_FIELD_ALIASES = {
     "story_scene": ["scene", "narrative_scene", "narrative"],
     "visible_delta": ["visible_changes", "change_summary", "player_delta"],
     "visible_snapshot": ["current_snapshot", "player_snapshot", "snapshot"],
+    "visible_actions": ["action_entries", "player_actions", "choices"],
+    "freeform_reminder": ["free_action_reminder", "allows_freeform", "freeform_allowed"],
 }
 RAW_LEDGER_DISPLAY_KEYS = {
     "event_history",
@@ -71,6 +73,47 @@ RAW_DELTA_DISPLAY_KEYS = RAW_LEDGER_DISPLAY_KEYS | {
     "threads_closed",
     "timeline_item",
 }
+RAW_ACTION_DISPLAY_KEYS = RAW_LEDGER_DISPLAY_KEYS | {
+    "checks",
+    "desired_outcome",
+    "intent",
+    "risk",
+    "selected_entry",
+    "state_hooks",
+    "tags",
+    "targets",
+}
+LOCKED_MENU_PATTERNS = [
+    "只能选择",
+    "只能选",
+    "必须选择",
+    "必须选",
+    "请从以下选项选择",
+    "从以下选项选择",
+    "从以上选项选择",
+    "回复编号",
+    "输入编号",
+    "输入数字",
+    "回复数字",
+    "choose only",
+    "choose one",
+    "must choose",
+    "select one",
+    "pick one",
+    "from the options",
+    "/select",
+]
+FREEFORM_REMINDER_PATTERNS = [
+    "也可以",
+    "直接说",
+    "自由行动",
+    "自由说",
+    "不必只选",
+    "可以自己",
+    "freeform",
+    "free-form",
+    "anything else",
+]
 
 
 def load_transcript(value: str) -> dict[str, Any]:
@@ -207,6 +250,14 @@ def turn_visible_delta(turn: dict[str, Any]) -> Any:
     return display_field(turn, "visible_delta")[1]
 
 
+def turn_visible_actions(turn: dict[str, Any]) -> Any:
+    return display_field(turn, "visible_actions")[1]
+
+
+def turn_freeform_reminder(turn: dict[str, Any]) -> Any:
+    return display_field(turn, "freeform_reminder")[1]
+
+
 def collect_nested_keys(value: Any) -> set[str]:
     keys: set[str] = set()
     if isinstance(value, dict):
@@ -257,6 +308,10 @@ def check_no_rawish_display_field(field_name: str, value: Any, index: int, raw_k
         warnings.append(f"turns[{index}].{field_name} appears to quote raw ledger keys: {text_overlap}")
 
 
+def has_rawish_display_markers(value: Any, raw_keys: set[str]) -> bool:
+    return bool(collect_nested_keys(value) & raw_keys) or bool(raw_key_markers_in_text(value, raw_keys))
+
+
 def has_textish_content(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
@@ -285,6 +340,116 @@ def has_visible_delta(turn: dict[str, Any]) -> bool:
     return has_textish_content(turn_visible_delta(turn))
 
 
+def action_label(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        for key in ["label", "text", "action", "title"]:
+            item = value.get(key)
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+    return ""
+
+
+def visible_action_labels(turn: dict[str, Any]) -> list[str]:
+    actions = turn_visible_actions(turn)
+    if not isinstance(actions, list):
+        return []
+    return [label for label in (action_label(item) for item in actions) if label]
+
+
+def has_visible_actions(turn: dict[str, Any]) -> bool:
+    labels = visible_action_labels(turn)
+    return 2 <= len(labels) <= 4
+
+
+def has_clean_visible_actions(turn: dict[str, Any]) -> bool:
+    actions = turn_visible_actions(turn)
+    if not isinstance(actions, list):
+        return False
+    labels = visible_action_labels(turn)
+    if not (2 <= len(labels) <= 4):
+        return False
+    if len(labels) != len(actions):
+        return False
+    if len(set(labels)) != len(labels):
+        return False
+    if has_locked_menu_language(actions):
+        return False
+    if has_freeform_reminder_language(labels):
+        return False
+    if has_rawish_display_markers(actions, RAW_ACTION_DISPLAY_KEYS):
+        return False
+    return True
+
+
+def has_freeform_reminder_evidence(turn: dict[str, Any]) -> bool:
+    reminder = turn_freeform_reminder(turn)
+    if reminder is True:
+        return True
+    if has_textish_content(reminder):
+        return True
+    actions = turn_visible_actions(turn)
+    text = ""
+    if isinstance(actions, list):
+        text = "\n".join(action_label(item) for item in actions)
+    elif isinstance(actions, str):
+        text = actions
+    return any(pattern.lower() in text.lower() for pattern in FREEFORM_REMINDER_PATTERNS)
+
+
+def explicit_freeform_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(explicit_freeform_text(item) for item in value)
+    if isinstance(value, dict):
+        return "\n".join(explicit_freeform_text(item) for item in value.values())
+    return ""
+
+
+def has_explicit_freeform_reminder(turn: dict[str, Any]) -> bool:
+    reminder = turn_freeform_reminder(turn)
+    text = explicit_freeform_text(reminder)
+    if not text:
+        return False
+    if not any(pattern.lower() in text.lower() for pattern in FREEFORM_REMINDER_PATTERNS):
+        return False
+    if has_locked_menu_language(text):
+        return False
+    if has_rawish_display_markers(reminder, RAW_ACTION_DISPLAY_KEYS):
+        return False
+    return True
+
+
+def has_locked_menu_language(value: Any) -> bool:
+    if isinstance(value, str):
+        text = value.lower()
+        if any(pattern.lower() in text for pattern in LOCKED_MENU_PATTERNS):
+            return True
+        if re.search(r"(请|回复|输入).{0,8}(编号|数字|[1-4][/、,， ]+[1-4])", value):
+            return True
+        if re.search(r"(choose|select|pick).{0,8}(one|number|option)", text):
+            return True
+        return False
+    if isinstance(value, list):
+        return any(has_locked_menu_language(item) for item in value)
+    if isinstance(value, dict):
+        return any(has_locked_menu_language(item) for item in value.values())
+    return False
+
+
+def has_freeform_reminder_language(value: Any) -> bool:
+    if isinstance(value, str):
+        text = value.lower()
+        return any(pattern.lower() in text for pattern in FREEFORM_REMINDER_PATTERNS)
+    if isinstance(value, list):
+        return any(has_freeform_reminder_language(item) for item in value)
+    if isinstance(value, dict):
+        return any(has_freeform_reminder_language(item) for item in value.values())
+    return False
+
+
 def check_story_scene(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
     check_display_alias(turn, "story_scene", index, warnings)
     scene = turn_story_scene(turn)
@@ -311,6 +476,51 @@ def check_visible_delta(turn: dict[str, Any], index: int, warnings: list[str]) -
     if not has_textish_content(delta):
         warnings.append(f"turns[{index}].visible_delta is empty")
     check_no_rawish_display_field("visible_delta", delta, index, RAW_DELTA_DISPLAY_KEYS, warnings)
+
+
+def check_visible_actions(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    check_display_alias(turn, "visible_actions", index, warnings)
+    actions = turn_visible_actions(turn)
+    if actions is None:
+        return
+    if not isinstance(actions, list):
+        warnings.append(f"turns[{index}].visible_actions should be a list of 2-4 player-facing action labels")
+        check_no_rawish_display_field("visible_actions", actions, index, RAW_ACTION_DISPLAY_KEYS, warnings)
+        return
+    labels = visible_action_labels(turn)
+    if len(labels) != len(actions):
+        warnings.append(f"turns[{index}].visible_actions should use strings or objects with label/text/action/title")
+    if not (2 <= len(labels) <= 4):
+        warnings.append(f"turns[{index}].visible_actions has {len(labels)} entries; expected 2-4 player-facing affordances")
+    duplicates = sorted({label for label in labels if labels.count(label) > 1})
+    if duplicates:
+        warnings.append(f"turns[{index}].visible_actions contains duplicate labels: {duplicates}")
+    if has_locked_menu_language(actions):
+        warnings.append(f"turns[{index}].visible_actions uses locked-menu language; entries should be affordances")
+    if has_freeform_reminder_language(labels):
+        warnings.append(f"turns[{index}].visible_actions appears to include the free-form reminder; move that text to freeform_reminder")
+    check_no_rawish_display_field("visible_actions", actions, index, RAW_ACTION_DISPLAY_KEYS, warnings)
+
+
+def check_freeform_reminder(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    check_display_alias(turn, "freeform_reminder", index, warnings)
+    reminder = turn_freeform_reminder(turn)
+    if reminder is None:
+        return
+    if not isinstance(reminder, (bool, str, list, dict)):
+        warnings.append(f"turns[{index}].freeform_reminder should be a bool, string, list, or object")
+        return
+    if reminder is True:
+        warnings.append(f"turns[{index}].freeform_reminder=true is accepted as compatibility evidence; prefer actual player-facing reminder text")
+    elif reminder is False:
+        warnings.append(f"turns[{index}].freeform_reminder is false; ordinary play should preserve free-form action")
+    elif not has_textish_content(reminder):
+        warnings.append(f"turns[{index}].freeform_reminder is empty")
+    if has_freeform_reminder_evidence(turn) and not has_explicit_freeform_reminder(turn):
+        warnings.append(f"turns[{index}].freeform_reminder should explicitly say the user may answer freely")
+    if has_locked_menu_language(reminder):
+        warnings.append(f"turns[{index}].freeform_reminder uses locked-menu language")
+    check_no_rawish_display_field("freeform_reminder", reminder, index, RAW_ACTION_DISPLAY_KEYS, warnings)
 
 
 def has_visible_snapshot(turn: dict[str, Any]) -> bool:
@@ -585,6 +795,8 @@ def validate(
     min_story_scenes: int = 0,
     min_visible_deltas: int = 0,
     forbid_raw_state: bool = False,
+    min_visible_actions: int = 0,
+    min_freeform_reminders: int = 0,
 ) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -613,6 +825,10 @@ def validate(
     turns_with_affordances = 0
     turns_with_story_scene = 0
     turns_with_visible_delta = 0
+    turns_with_visible_actions = 0
+    turns_with_clean_visible_actions = 0
+    turns_with_freeform_reminder = 0
+    turns_with_freeform_reminder_evidence = 0
     per_turn_state_snapshots = 0
     turns_with_visible_snapshot = 0
     structured_visible_snapshots = 0
@@ -648,6 +864,16 @@ def validate(
         if has_visible_delta(turn):
             turns_with_visible_delta += 1
         check_visible_delta(turn, index, warnings)
+        if has_visible_actions(turn):
+            turns_with_visible_actions += 1
+        if has_clean_visible_actions(turn):
+            turns_with_clean_visible_actions += 1
+        check_visible_actions(turn, index, warnings)
+        if has_freeform_reminder_evidence(turn):
+            turns_with_freeform_reminder_evidence += 1
+        if has_explicit_freeform_reminder(turn):
+            turns_with_freeform_reminder += 1
+        check_freeform_reminder(turn, index, warnings)
         if turn_has_affordances(turn):
             turns_with_affordances += 1
         else:
@@ -682,6 +908,10 @@ def validate(
         warnings.append(f"playtest has {turns_with_story_scene} story scenes; expected at least {min_story_scenes}")
     if turns_with_visible_delta < min_visible_deltas:
         warnings.append(f"playtest has {turns_with_visible_delta} visible deltas; expected at least {min_visible_deltas}")
+    if turns_with_clean_visible_actions < min_visible_actions:
+        warnings.append(f"playtest has {turns_with_clean_visible_actions} turns with clean 2-4 visible actions; expected at least {min_visible_actions}")
+    if turns_with_freeform_reminder < min_freeform_reminders:
+        warnings.append(f"playtest has {turns_with_freeform_reminder} free-form reminders; expected at least {min_freeform_reminders}")
     if forbid_raw_state and disallowed_raw_state_exposed_turns:
         warnings.append(f"raw state was exposed on {disallowed_raw_state_exposed_turns} turns without debug/raw_state_requested")
 
@@ -737,6 +967,10 @@ def validate(
         "turns_with_delta": turns_with_delta,
         "turns_with_story_scene": turns_with_story_scene,
         "turns_with_visible_delta": turns_with_visible_delta,
+        "turns_with_visible_actions": turns_with_visible_actions,
+        "turns_with_clean_visible_actions": turns_with_clean_visible_actions,
+        "turns_with_freeform_reminder": turns_with_freeform_reminder,
+        "turns_with_freeform_reminder_evidence": turns_with_freeform_reminder_evidence,
         "turns_with_affordances": turns_with_affordances,
         "turns_with_visible_snapshot": turns_with_visible_snapshot,
         "structured_visible_snapshots": structured_visible_snapshots,
@@ -752,7 +986,7 @@ def validate(
 
 
 def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--min-visible-actions N] [--min-freeform-reminders N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
@@ -769,6 +1003,8 @@ def main(argv: list[str]) -> int:
     min_visible_snapshots = 0
     min_story_scenes = 0
     min_visible_deltas = 0
+    min_visible_actions = 0
+    min_freeform_reminders = 0
     max_age_jump: int | None = None
     max_age_span: int | None = None
     min_same_age_turns = 0
@@ -779,6 +1015,8 @@ def main(argv: list[str]) -> int:
         ("--min-visible-snapshots", "min_visible_snapshots"),
         ("--min-story-scenes", "min_story_scenes"),
         ("--min-visible-deltas", "min_visible_deltas"),
+        ("--min-visible-actions", "min_visible_actions"),
+        ("--min-freeform-reminders", "min_freeform_reminders"),
         ("--max-age-jump", "max_age_jump"),
         ("--max-age-span", "max_age_span"),
         ("--min-same-age-turns", "min_same_age_turns"),
@@ -803,6 +1041,10 @@ def main(argv: list[str]) -> int:
             min_story_scenes = value
         elif target == "min_visible_deltas":
             min_visible_deltas = value
+        elif target == "min_visible_actions":
+            min_visible_actions = value
+        elif target == "min_freeform_reminders":
+            min_freeform_reminders = value
         elif target == "max_age_jump":
             max_age_jump = value
         elif target == "max_age_span":
@@ -831,6 +1073,8 @@ def main(argv: list[str]) -> int:
         min_story_scenes=min_story_scenes,
         min_visible_deltas=min_visible_deltas,
         forbid_raw_state=forbid_raw_state,
+        min_visible_actions=min_visible_actions,
+        min_freeform_reminders=min_freeform_reminders,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not result["ok"]:

@@ -115,7 +115,11 @@ For `freeform` or `modified_entry` turns in playtests or handoff, add a compact 
 
 This is not a second state object. It is proof that the user's custom action survived resolution and touched real ledger hooks.
 
+In QA transcripts, every `intent_trace.state_hooks` item needs same-turn evidence. Prefer hooks changed by the current `delta`; if the hook already existed before the custom action, include a `post_state` snapshot so the validator can see it is a real ledger item, not a decorative tag.
+
 As attributes rise, diversify rewards. Once an ordinary mortal attribute is already high for the current world, reward further competent choices with relationship trust, evidence quality, pressure relief, resources, opened/closed threads, or phase outcomes instead of another attribute increase. Attribute gains should mark real development, not every successful action.
+
+For realistic school or career arcs, high `INT` / `WIL` should usually produce playable opportunities rather than more stat growth: supervised computer-room access, a scholarship route, a family budget promise, a mentor relationship, better evidence custody, a reduced exam clock, a stable study routine, or a closed secrecy thread.
 
 Keep relationship scores within `-5..5`. Do not keep every named person or faction active forever; archive inactive contacts into `phase_summaries`, relationship notes, evidence holders, or timeline summaries so the current relationship board stays playable.
 
@@ -164,6 +168,8 @@ Player-facing entries can be short natural-language lines, but each one should h
 
 Do not show this JSON during ordinary play. Use it as a design check and as optional checkpoint detail when another agent must resume the same board.
 
+During playtests, record the player-facing labels as `visible_actions` and the free-action line as `freeform_reminder`. Keep `visible_actions` to 2-4 strings or label-only objects. Store tags, targets, state hooks, checks, and risk in `next_affordances`, not in the player-facing field. Do not put the free-action reminder itself inside `visible_actions`; it is permission text, not an affordance.
+
 During playtests or debug handoff, you may store these objects as optional `next_affordances` on the state ledger before running `scripts/validate_state.py`. Ordinary live play does not need to show or persist them every turn, but the QA field helps catch duplicate labels, missing state hooks, and cosmetic variants.
 
 Good spread:
@@ -195,5 +201,6 @@ Before sending the turn:
 - If this turn closed a phase, did stale threads move into a phase summary instead of staying active?
 - If an attribute is outside the ordinary range, did the ledger explain it with `attribute_notes` or clamp future gains?
 - Are action entries plausible from the updated state?
+- Did the player-facing action entries stay to 2-4 affordance labels, with a free-action reminder?
 - If this is a save/resume/handoff moment, is there a checkpoint concise enough to copy but complete enough to continue?
 - If script/content material failed, is that failure named during tests instead of hidden?
