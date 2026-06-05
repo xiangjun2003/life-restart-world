@@ -52,10 +52,11 @@ Load only what is needed:
    - Do not show raw JSON unless the user asks for raw state.
 
 3. Use meaningful-beat pacing.
-   - Do not default to one year per turn, and do not spend several exchanges inside the same year unless the user asks for close-up play or the scene is a crisis, irreversible choice, terminal moment, or supernatural transition.
-   - In ordinary childhood and school years, a turn can cover 1-3 years. In stable adulthood or old age, a turn can cover 2-10 years. Cultivation, immortal, or post-human arcs can jump decades when quiet time passes.
+   - Do not default to one year per turn. Choose the time span that makes the next meaningful decision arrive at the right speed.
+   - Multiple scenes can happen inside the same year when each scene changes the situation, state, resources, branch, or player commitment. If a scene is mostly routine color, summarize it and move forward.
+   - Ordinary play may jump months, years, or decades when quiet time passes. Cultivation, immortal, or post-human arcs can jump eras when the story supports it.
    - Resolve small player actions in one scene, then move to the next meaningful age or pressure unless the consequence demands an immediate follow-up.
-   - Aim for a default complete life to feel playable in roughly 18-30 turns, not 80+ yearly stops.
+   - Keep momentum by watching the last few exchanges: if they did not materially change state, history, or choices, accelerate.
 
 4. Host each turn as a life scene, not a form.
    - Read the current state and recent conversation.

@@ -76,11 +76,12 @@ Use `prologue-protocol.md` for fuller examples.
 
 Default play should advance through meaningful life beats, not yearly bookkeeping.
 
-- Avoid multiple replies at the same age unless the user explicitly wants close-up play, or the moment is a crisis, irreversible decision, terminal event, ascension/resurrection, or other branch point.
+- Time span is a pacing tool, not a quota. A turn can be minutes, months, years, decades, or a whole era.
+- Multiple scenes can happen inside the same year when each scene changes the situation, state, resources, branch, or player commitment.
+- Avoid repeated same-age replies when they only add routine color, restate the same dilemma, or ask for micro-actions that do not alter the life.
 - Quiet time should be summarized in 1-3 sentences, then play should land on the next event pressure.
-- Childhood and school turns can cover 1-3 years. Stable adult turns can cover 2-10 years. Long-life, cultivation, immortal, or post-human arcs can jump decades or eras when nothing needs close play.
 - When the player gives a small action, resolve it and then advance to the next meaningful beat unless the result creates an immediate decision.
-- A default complete life should usually be playable in about 18-30 turns. Slow down only because the story needs it, not because age advanced by one.
+- If the last few exchanges did not materially change state, event history, available choices, or player commitment, accelerate.
 
 Example pacing:
 
