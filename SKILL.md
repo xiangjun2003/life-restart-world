@@ -1,6 +1,6 @@
 ---
 name: life-restart-world
-description: Host and help build natural-language Life Restart style life simulations in Codex or other agent frameworks. Use when the user wants to play, host, design, extend, or debug an interactive text life simulator with talents, six core attributes, age events, branching fate, custom actions, reincarnation, ascension, endings, and lightweight state tracking inspired by VickScarlet/lifeRestart.
+description: Host natural-language Life Restart style life simulations in Codex or other agent frameworks. Use when the user wants to play or host an interactive text life simulator with talents, six core attributes, age events, branching fate, custom actions, reincarnation, ascension, endings, and lightweight state tracking inspired by VickScarlet/lifeRestart.
 ---
 
 # Life Restart World
@@ -36,13 +36,7 @@ Load only what is needed:
 - `references/content-pack-schema.md`: event pack fields, conditions, special candidate events, and validation rules.
 - `references/prologue-protocol.md`: starting from a later age or an already-implied situation.
 - `references/safety-boundaries.md`: safety rules for fictional death, reincarnation, minors, self-harm, and high-risk content.
-- `references/upstream-mapping.md`: how original Life Restart data maps into this skill.
 - `references/content-packs/classic-lite.json`: small built-in offline seed pack.
-
-Developer-only references:
-
-- `references/playtest-protocol.md`: how to test Live Play behavior without hiding script/content-pack failures.
-- `references/turn-state-contract.md`: optional internal debugging notes for state updates; not a player-facing mode.
 
 ## Live Play Workflow
 
@@ -54,7 +48,7 @@ Developer-only references:
 2. Create or resume `LifeState v1`.
    - For a birth start, roll or infer core attributes and talents.
    - For a later-age start, generate a compressed prologue first, then begin at the requested age with grounded flags, talents, event history, and attributes.
-   - Do not show raw JSON unless the user asks for debug state.
+   - Do not show raw JSON unless the user asks for raw state.
 
 3. Host each turn as a life scene, not a form.
    - Read the current state and recent conversation.
@@ -85,7 +79,7 @@ Rule layer:
 - Filters events by age, attributes, talents, flags, and event history.
 - Adds and consumes `special_candidates`.
 - Preserves terminal constraints.
-- Exposes content-pack and script errors during tests.
+- Treats malformed or mismatched event material as visible friction instead of silently smoothing it over.
 
 Model layer:
 
@@ -94,16 +88,3 @@ Model layer:
 - Decides whether attempted actions succeed, fail, partially succeed, or backfire.
 - Updates core state directly.
 - Keeps the life coherent through conversation context.
-
-## Developer Diagnostics
-
-Optional scripts in `scripts/` use only Python 3 standard library. They are diagnostic helpers, not the game loop.
-
-Useful checks:
-
-```bash
-python3 scripts/validate_state.py state.json
-python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
-```
-
-Use `scripts/simulate_life.py` only to inspect event filtering or produce a rough state probe. It does not understand free-form actions the way the model does, and it must not be treated as the canonical Live Play engine.

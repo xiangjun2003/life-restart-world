@@ -148,7 +148,7 @@ Good openings differ by method or risk:
 
 The user may select one, modify one, combine several, or ignore them entirely. Free-form input is first-class play and should not be squeezed into the closest listed option.
 
-Avoid fixed command UX such as `/select`, event IDs, or mandatory numbered choices unless the user explicitly asks for raw/debug mode.
+Avoid fixed command UX such as `/select`, event IDs, or mandatory numbered choices unless the user explicitly asks for raw state.
 
 ## Output Style
 

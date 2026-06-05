@@ -2,16 +2,6 @@
 
 Content packs are event seed libraries. They help the Game Master find age/state-appropriate material, but they are not a complete engine and do not force outcomes.
 
-## Validation
-
-Run after editing or importing a pack:
-
-```bash
-python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
-```
-
-Validation errors are blockers during tests. Do not hide malformed packs by generating fallback events.
-
 ## Top-Level Shape
 
 ```json
@@ -103,7 +93,7 @@ Special candidate rules:
 - `include` still gates whether it can resolve now.
 - `exclude` can still block it.
 - remove it from `special_candidates` after resolution unless `repeatable` is true.
-- do not show the candidate list to the player unless they ask for debug state.
+- do not show the candidate list to the player unless they ask for raw state.
 
 ## Event Fields
 
