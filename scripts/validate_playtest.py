@@ -24,6 +24,22 @@ INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
 CUSTOM_INTENT_SOURCES = {"modified_entry", "freeform"}
 NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
 NON_ADJUDICATING_PACK_POLICY_MODES = {"none", "reference"}
+VISIBLE_SNAPSHOT_KEYS = {
+    "age",
+    "time",
+    "realm",
+    "existence_state",
+    "attributes",
+    "relationships",
+    "pressure",
+    "pressure_clocks",
+    "threads",
+    "open_threads",
+    "evidence",
+    "terminal",
+    "summary",
+    "current",
+}
 
 
 def load_transcript(value: str) -> dict[str, Any]:
@@ -138,6 +154,65 @@ def turn_has_affordances(turn: dict[str, Any]) -> bool:
         if isinstance(state, dict) and state_has_affordances(state):
             return True
     return False
+
+
+def turn_visible_snapshot(turn: dict[str, Any]) -> Any:
+    for key in ["visible_snapshot", "current_snapshot", "player_snapshot", "snapshot"]:
+        value = turn.get(key)
+        if value is not None:
+            return value
+    return None
+
+
+def has_visible_snapshot(turn: dict[str, Any]) -> bool:
+    snapshot = turn_visible_snapshot(turn)
+    if isinstance(snapshot, str):
+        return bool(snapshot.strip())
+    if isinstance(snapshot, dict):
+        return any(value not in (None, "", [], {}) for value in snapshot.values())
+    return False
+
+
+def visible_snapshot_board_keys(turn: dict[str, Any]) -> set[str]:
+    snapshot = turn_visible_snapshot(turn)
+    if not isinstance(snapshot, dict):
+        return set()
+    return {
+        key
+        for key in snapshot
+        if key in VISIBLE_SNAPSHOT_KEYS and snapshot.get(key) not in (None, "", [], {})
+    }
+
+
+def check_visible_snapshot(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
+    snapshot = turn_visible_snapshot(turn)
+    if snapshot is None:
+        return
+    if isinstance(snapshot, str):
+        if not snapshot.strip():
+            warnings.append(f"turns[{index}].visible_snapshot is empty")
+        return
+    if not isinstance(snapshot, dict):
+        warnings.append(f"turns[{index}].visible_snapshot should be a string or object")
+        return
+    if not snapshot:
+        warnings.append(f"turns[{index}].visible_snapshot is empty")
+        return
+    if not visible_snapshot_board_keys(turn):
+        warnings.append(f"turns[{index}].visible_snapshot has no recognizable board fields")
+
+
+def raw_state_exposed(turn: dict[str, Any]) -> bool:
+    return turn.get("raw_state_exposed") is True or turn.get("raw_json_exposed") is True
+
+
+def raw_state_exposure_allowed(turn: dict[str, Any], transcript: dict[str, Any]) -> bool:
+    return (
+        transcript.get("debug") is True
+        or transcript.get("raw_state_requested") is True
+        or turn.get("debug") is True
+        or turn.get("raw_state_requested") is True
+    )
 
 
 def turn_intent_source(turn: dict[str, Any]) -> str | None:
@@ -353,6 +428,8 @@ def validate(
     max_age_span: int | None = None,
     min_same_age_turns: int = 0,
     forbid_age_regression: bool = False,
+    min_visible_snapshots: int = 0,
+    forbid_raw_state: bool = False,
 ) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -380,6 +457,10 @@ def validate(
     turns_with_delta = 0
     turns_with_affordances = 0
     per_turn_state_snapshots = 0
+    turns_with_visible_snapshot = 0
+    structured_visible_snapshots = 0
+    raw_state_exposed_turns = 0
+    disallowed_raw_state_exposed_turns = 0
     transcript_event_ids: set[str] = set()
 
     for index, turn in enumerate(turns):
@@ -408,6 +489,16 @@ def validate(
             turns_with_affordances += 1
         else:
             warnings.append(f"turns[{index}] has no next_affordances evidence")
+        if has_visible_snapshot(turn):
+            turns_with_visible_snapshot += 1
+            if visible_snapshot_board_keys(turn):
+                structured_visible_snapshots += 1
+        check_visible_snapshot(turn, index, warnings)
+        if raw_state_exposed(turn):
+            raw_state_exposed_turns += 1
+            if forbid_raw_state and not raw_state_exposure_allowed(turn, transcript):
+                disallowed_raw_state_exposed_turns += 1
+                warnings.append(f"turns[{index}] exposes raw state during ordinary play; use visible_snapshot unless raw state was requested/debug")
         if isinstance(turn.get("state"), dict) or isinstance(turn.get("post_state"), dict):
             per_turn_state_snapshots += 1
         transcript_event_ids.update(event_ids_from_turn(turn))
@@ -422,6 +513,10 @@ def validate(
         warnings.append("playtest has no per-turn state snapshots")
     if turns and not turns_with_affordances:
         warnings.append("playtest has no recorded next_affordances")
+    if turns_with_visible_snapshot < min_visible_snapshots:
+        warnings.append(f"playtest has {turns_with_visible_snapshot} visible snapshots; expected at least {min_visible_snapshots}")
+    if forbid_raw_state and disallowed_raw_state_exposed_turns:
+        warnings.append(f"raw state was exposed on {disallowed_raw_state_exposed_turns} turns without debug/raw_state_requested")
 
     states = state_objects(transcript)
     named_state_snapshots = sum(1 for key in ["initial_state", "mid_state", "final_state"] if isinstance(transcript.get(key), dict))
@@ -474,6 +569,10 @@ def validate(
         "modified_entry_turns": modified_entry_turns,
         "turns_with_delta": turns_with_delta,
         "turns_with_affordances": turns_with_affordances,
+        "turns_with_visible_snapshot": turns_with_visible_snapshot,
+        "structured_visible_snapshots": structured_visible_snapshots,
+        "raw_state_exposed_turns": raw_state_exposed_turns,
+        "disallowed_raw_state_exposed_turns": disallowed_raw_state_exposed_turns,
         "per_turn_state_snapshots": per_turn_state_snapshots,
         "named_state_snapshots": named_state_snapshots,
         "state_snapshots": len(states),
@@ -484,7 +583,7 @@ def validate(
 
 
 def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
@@ -493,9 +592,12 @@ def main(argv: list[str]) -> int:
     args = [arg for arg in args if arg != "--fail-on-warnings"]
     forbid_age_regression = "--forbid-age-regression" in args
     args = [arg for arg in args if arg != "--forbid-age-regression"]
+    forbid_raw_state = "--forbid-raw-state" in args
+    args = [arg for arg in args if arg != "--forbid-raw-state"]
     min_turns = 0
     min_freeform = 0
     min_modified_entry = 0
+    min_visible_snapshots = 0
     max_age_jump: int | None = None
     max_age_span: int | None = None
     min_same_age_turns = 0
@@ -503,6 +605,7 @@ def main(argv: list[str]) -> int:
         ("--min-turns", "min_turns"),
         ("--min-freeform", "min_freeform"),
         ("--min-modified-entry", "min_modified_entry"),
+        ("--min-visible-snapshots", "min_visible_snapshots"),
         ("--max-age-jump", "max_age_jump"),
         ("--max-age-span", "max_age_span"),
         ("--min-same-age-turns", "min_same_age_turns"),
@@ -521,6 +624,8 @@ def main(argv: list[str]) -> int:
             min_freeform = value
         elif target == "min_modified_entry":
             min_modified_entry = value
+        elif target == "min_visible_snapshots":
+            min_visible_snapshots = value
         elif target == "max_age_jump":
             max_age_jump = value
         elif target == "max_age_span":
@@ -545,6 +650,8 @@ def main(argv: list[str]) -> int:
         max_age_span=max_age_span,
         min_same_age_turns=min_same_age_turns,
         forbid_age_regression=forbid_age_regression,
+        min_visible_snapshots=min_visible_snapshots,
+        forbid_raw_state=forbid_raw_state,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not result["ok"]:

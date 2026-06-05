@@ -65,6 +65,8 @@ Load only what is needed:
    - At natural phase endpoints, close or summarize stale threads into a phase summary so the current board stays playable.
    - Keep the visible board small: preserve history in timeline and phase summaries, but keep only active relationships, clocks, evidence, and threads in the current snapshot.
    - Move resolved or archived clocks/evidence out of the active board and into summaries, notes, flags, or timeline.
+   - Do not wait until the final phase endpoint to clean the board. In long arcs, if active `open_threads` or evidence are nearing 7 items, merge, close, or archive stale items before adding another major thread.
+   - In investigation or school/career pressure arcs, consolidate related clues, routines, or temporary contacts into an evidence packet, relationship note, pressure clock, or carried main thread.
    - When the user asks to save, resume, hand off to another agent, or continue after a long arc, create or consume a compact state checkpoint. Keep ordinary turns light unless a checkpoint is useful.
 
 5. End or transcend the life.
@@ -84,7 +86,7 @@ python3 scripts/simulate_life.py turn --state state.json --intent intent.json --
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 python3 scripts/validate_checkpoint.py checkpoint.json
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-visible-snapshots 8 --forbid-raw-state playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
@@ -97,6 +99,8 @@ Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed t
 When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; for `freeform` or `modified_entry`, `last_delta.intent_trace` should show which custom action parts reached ledger hooks. Do not expose the structured objects to the player unless they ask for raw state.
 
 Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
+
+For player-output QA, transcript turns may include `visible_snapshot` for the compact player-facing board and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-visible-snapshots` and `--forbid-raw-state` in strict playtests. `visible_snapshot` is evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
 
 For dense arcs or later-age starts where pacing matters, add playtest thresholds such as `--max-age-jump 1`, `--max-age-span 3`, or `--min-same-age-turns 2`. These are QA promises, not live-play rules. Use `--forbid-age-regression` only for ordinary chronological arcs.
 
@@ -124,3 +128,5 @@ For each playable turn, respond in this order:
    - End with a reminder that the user can answer freely.
 
 Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.
+
+During QA transcripts, record the player-facing current snapshot as `visible_snapshot`; do not expose full ledger JSON to the player unless they requested debug/raw state.

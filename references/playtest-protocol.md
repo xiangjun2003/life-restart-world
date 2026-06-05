@@ -39,6 +39,8 @@ For each playtest, record:
 - Whether `phase_summaries.closed_threads` are actually absent from `open_threads`, unless the transcript clearly reopens them under a new active problem.
 - Whether inactive clocks/evidence named by `last_delta` are absent from the active board but present in structured archive fields such as `closed_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence`.
 - Whether the current board stays scannable: only active relationships, clocks, evidence, and threads remain visible; old material moves into phase summaries, flags, notes, or timeline.
+- For 10-14 turn school, career, investigation, or faction arcs, whether a mid-arc cleanup happened around turns 6-8 or before active threads/evidence neared 7 items.
+- Whether each ordinary turn exposed a compact player-facing current snapshot, not raw ledger JSON. In JSON transcripts, record that projection as `visible_snapshot` and mark `raw_state_exposed: false` unless the player explicitly requested debug/raw state.
 - For pacing-sensitive tests, record age span, largest age jump, and same-age transitions. The goal is not to forbid jumps; it is to make accidental speedruns visible.
 - For save/resume tests, whether a checkpoint is compact enough to copy and complete enough to resume without rerolling or replaying.
 - For save/resume tests, record `scripts/validate_checkpoint.py` output before reconstructing the full ledger, then record `scripts/validate_state.py` output after resuming.
@@ -75,6 +77,12 @@ For multi-turn QA, testers may also produce a compact JSON transcript and run:
 python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
 ```
 
+For strict player-output QA, require a visible board each turn and forbid raw ledger exposure:
+
+```bash
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-visible-snapshots 8 --forbid-raw-state playtest.json
+```
+
 For dense phases, add pacing gates that match the test promise:
 
 ```bash
@@ -98,6 +106,15 @@ Minimal transcript shape:
       "user_action": "选 2，但先向老师隐瞒家里的水票账本",
       "intent_source": "modified_entry",
       "event_ids": ["manual_turn_archive_access"],
+      "visible_snapshot": {
+        "age": 12,
+        "time": "12岁秋，放学后",
+        "attributes": {"INT": 8, "WIL": 7},
+        "relationships": {"mentor_teacher": 2, "mother": 1},
+        "pressure": {"family_budget": "3/5"},
+        "threads": ["water_ticket_case", "exam_path"]
+      },
+      "raw_state_exposed": false,
       "delta": {
         "intent_trace": {
           "source": "modified_entry",
@@ -118,6 +135,8 @@ Minimal transcript shape:
 ```
 
 `post_state` and `final_state` should be real ledgers when used; `{}` is only a shape placeholder. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
+
+`visible_snapshot` is the player-facing projection of the current board. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
 
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 

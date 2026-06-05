@@ -130,7 +130,11 @@ After applying the delta, show a compact snapshot:
 
 Do not print the full JSON ledger unless the user asks for debug/raw state.
 
+During playtests, record this player-facing projection as `visible_snapshot` on the transcript turn. It is not a second ledger; it is proof that ordinary play showed the current board without exposing raw state.
+
 If the internal ledger has many active items, prune the current board before showing it. Archive resolved or inactive relationships, evidence, clocks, and threads into `phase_summaries`, timeline, flags, or relationship notes. Keep only items that can plausibly change the next decision.
+
+If the next ruling would add a major thread or evidence item while the board is already crowded, clean up first. Merge sibling threads, convert stable background pressure into a clock or relationship note, consolidate scattered evidence into one packet, or write a mid-arc `phase_summaries` item. Do this before the validator would report too many active items, not only at the final endpoint.
 
 For save/resume or agent handoff, provide a checkpoint capsule instead of the full ledger. The checkpoint should preserve the current playable state: session id, turn, age/time, realm/existence state, attributes, talents, active relationships, clocks, evidence, flags, open threads, recent timeline, and next affordances. Keep older resolved history summarized unless it still affects play.
 
@@ -185,6 +189,7 @@ Before sending the turn:
 - If multiple turns happen at the same age, did the time marker or timeline make the sequence clear?
 - Did any pressure clock advance, reduce, fill, or close?
 - Did resolved or archived clocks/evidence leave the active board and move into a summary, note, flag, or timeline item?
+- If the turn opens a new major thread/evidence item, is the board still small enough to scan, or did a mid-arc cleanup merge stale items first?
 - If this turn closed a phase, did stale threads move into a phase summary instead of staying active?
 - If an attribute is outside the ordinary range, did the ledger explain it with `attribute_notes` or clamp future gains?
 - Are action entries plausible from the updated state?

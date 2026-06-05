@@ -104,6 +104,44 @@ When age reaches or passes `life_cap`, do not silently keep ordinary play moving
 
 Any resurrection, ascension, immortality, or post-human transition should land in the ledger, not only in prose: update `existence_state`, `realm` when relevant, `life_cap` when aging still matters, `flags`, `timeline`, and usually a `phase_summaries` item that closes the prior human-life arc. Then offer new action entries for the next realm or ask whether the user wants a summary ending.
 
+Minimum transition shape at a life-cap pressure point:
+
+```json
+{
+  "age": 160,
+  "life_cap": 300,
+  "existence_state": "immortal",
+  "realm": "human_world",
+  "flags": ["life_cap_broken", "merit_anchor_complete"],
+  "event_history": ["manual_life_cap_breakthrough"],
+  "timeline": [
+    {
+      "turn": 9,
+      "age": 160,
+      "event_id": "manual_life_cap_breakthrough",
+      "title": "寿限点突破",
+      "action": "交付人间功德碑后冲击天门"
+    }
+  ],
+  "phase_summaries": [
+    {
+      "id": "phase_mortal_to_immortal",
+      "age": 160,
+      "summary": "The mortal old-age arc closes; aging stops being the main pressure.",
+      "closed_threads": ["late_mortal_regret", "family_farewell"],
+      "carried_threads": ["ascension_threshold"],
+      "closed_clocks": ["mortal_life_cap"],
+      "outcomes": ["immortal_body", "unfinished_higher_realm_choice"],
+      "next_phase": "ascension_gate"
+    }
+  ],
+  "terminal": false,
+  "terminal_reason": null
+}
+```
+
+If the next beat is final ascension instead of continued play, keep the same state sync and set `existence_state: "ascended"`, update `realm`, set `terminal: true`, and use `terminal_reason` to explain that the human-life arc ended by transformation rather than ordinary death.
+
 ## Pace
 
 Default `standard` pace should produce about 25-45 meaningful turns.
@@ -140,6 +178,8 @@ For `standard` pace, a useful default is:
 - For custom or no-pack worlds, do not leave `world.session_note.state_axes` and `factions` only in the note. At least one current axis and one current faction should appear in active relationships, open threads, clocks, evidence, flags, `last_delta`, `last_intent`, or `next_affordances` hooks.
 
 The current board should stay small enough to scan. As a rule of thumb, keep no more than about 2-5 active relationships, 2-5 open threads or clocks, and only evidence that can affect the next few turns. Archive inactive contacts, resolved evidence, filled clocks, old promises, and completed arcs into relationship notes, flags, timeline, or `phase_summaries`. This is about the visible/current board, not erasing protagonist history.
+
+When a long phase is still active, use mid-arc cleanup before clutter becomes a validation warning. If `open_threads`, active evidence, or active relationships are nearing 7 items, merge sibling hooks and archive stale ones before adding more. Examples: turn `family_money_pressure` into a pressure clock or family note, merge `computer_practice_routine` and `computer_shop_access` into `computer_path`, or combine scattered investigation clues into one `evidence_packet_*` item with archived raw evidence IDs.
 
 Phase summaries are compact records of completed life segments:
 

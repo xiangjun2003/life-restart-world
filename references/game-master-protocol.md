@@ -45,6 +45,8 @@ The first response should be playable, not just configurational. Use this shape:
 
 Keep raw ledger JSON internal unless the user asks for it. The visible character card is a compact projection of the ledger; the internal ledger still contains timeline, event history, flags, clocks, evidence, and open threads.
 
+In playtest transcripts, record that projection as `visible_snapshot` and mark whether raw state was exposed. Ordinary play should show the compact board, not the full ledger JSON.
+
 Keep engine diagnostics out of ordinary player-facing openings. In playtests or debug mode, record unsupported content packs, strict probe failures, and manual hosting labels separately. For normal play, a custom world can simply begin as a custom world; the user does not need to see "content pack mismatch" or "manual hosting" unless they ask how the system is adjudicating.
 
 Example first playable response:
@@ -144,6 +146,35 @@ Example:
 After phase closure, do not keep old resolved threads, clocks, or evidence in the visible snapshot. If they still matter, preserve them as flags, relationship notes, evidence, or `phase_summaries`. For debug or handoff, prefer structured phase fields such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `archived_evidence`, or `spent_evidence` so validation can trace why an item left the active board.
 
 Board hygiene matters more in long lives than in one-shot scenes. If the visible snapshot starts listing too many active people, clocks, evidence items, or threads, stop and archive stale items before offering the next entries. The player should see the current decision pressure, not the whole biography.
+
+Use mid-arc cleanup when a 10-14 turn phase is still underway but the board is getting crowded. As a practical trigger, if active `open_threads`, evidence, or relationships are nearing 7 items and the next event would add more, first merge or archive stale material. This is not a fast-forward; it is a ledger cleanup beat inside the current playable phase.
+
+Examples:
+
+```json
+{
+  "id": "cleanup_exam_pressure_midpoint",
+  "age": 17,
+  "time": "17岁冬，高考倒计时",
+  "summary": "Computer access, shop chores, and family budgeting are now one scholarship-and-computer path rather than three separate active problems.",
+  "closed_threads": ["computer_practice_routine", "computer_shop_access", "high_school_track"],
+  "carried_threads": ["exam_path", "computer_path", "family_budget_contract", "leave_or_stay"],
+  "archived_evidence": ["shop_repair_credit"],
+  "outcomes": ["cleaner exam-year board"]
+}
+```
+
+```json
+{
+  "id": "cleanup_ai_scheduling_packet",
+  "time": "实习第4周，伦理备案前",
+  "summary": "Scattered shift notes, print-cache clues, and coworker statements become one evidence packet for escalation.",
+  "closed_threads": ["night_shift_observation", "print_cache_probe", "coworker_testimony_line"],
+  "carried_threads": ["algorithm_accountability", "ethics_escalation", "retaliation_risk"],
+  "archived_evidence": ["raw_shift_notes", "print_cache_copy", "coworker_statement"],
+  "outcomes": ["evidence_packet_ai_scheduling"]
+}
+```
 
 ## Turn Loop
 
