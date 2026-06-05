@@ -31,6 +31,7 @@ For each playtest, record:
 - For later-age starts, whether the compressed prologue produced timeline and event_history entries instead of a blank state.
 - Whether hosting was manual, script-assisted, or script-driven.
 - Each turn's user action, event or adjudication, state delta, and next affordances.
+- Whether each turn's durable `delta` lands in that turn's `post_state`; a visible change summary without ledger evidence is not enough.
 - Whether action entries have distinct state hooks rather than cosmetic wording differences.
 - At least one selected-entry modification or free-form action, with `intent.source` preserved as `modified_entry` or `freeform` in notes.
 - Whether the post-turn state ledger passes `scripts/validate_state.py` when represented as JSON. For live-turn QA, include optional structured `next_affordances`, `last_intent`, and `last_delta` in at least one mid-run state.
@@ -82,10 +83,10 @@ For multi-turn QA, testers may also produce a compact JSON transcript and run:
 python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
 ```
 
-For strict player-output QA, require story prose, a visible change summary, and a visible board each turn, and forbid raw ledger exposure:
+For strict player-output QA, require story prose, a visible change summary, a visible board, and landed ledger deltas each turn, and forbid raw ledger exposure:
 
 ```bash
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-landed-deltas 8 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
 ```
 
 For dense phases, add pacing gates that match the test promise:
@@ -97,7 +98,7 @@ python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-free
 For dense school, career, medical, investigation, hearing, or relationship arcs, combine player-output QA and pacing gates:
 
 ```bash
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --max-age-jump 1 --max-age-span 1 --min-same-age-turns 6 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-landed-deltas 8 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --max-age-jump 1 --max-age-span 1 --min-same-age-turns 6 --forbid-raw-state playtest.json
 ```
 
 Use pacing gates for investigations, exam weeks, career crises, sect trials, hearings, relationships, or other arcs that should stay textured. Do not use them for explicit速通, long-life cultivation spans, immortality, ascension, or user-requested fast-forward unless the test is specifically about catching over-compression.
@@ -155,7 +156,7 @@ Minimal transcript shape:
 }
 ```
 
-Add real `post_state`, `mid_state`, and `final_state` ledgers when validating a full transcript; they are omitted above rather than shown as `{}` placeholders because any object in those fields is treated as a real ledger. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
+Add real `state`, `post_state`, `mid_state`, and `final_state` ledgers when validating a full transcript; they are omitted above rather than shown as `{}` placeholders because any object in those fields is treated as a real ledger. For strict QA, each turn-level `delta` should be checkable against that turn's `post_state`, including event ids in `event_history` and `timeline`, added flags and threads, relationship changes, pressure clocks, evidence, phase summaries, age/time, realm, existence state, and terminal status. Attribute deltas such as `{"INT": 1}` also need a same-turn pre-state `state` so the validator can check `pre + delta == post`. A `delta` with only `summary`, `intent_trace`, or prose does not count as landed state change. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, landed deltas, affordances, state snapshots, and pack-policy consistency.
 
 `story_scene`, `visible_delta`, `visible_snapshot`, `visible_actions`, and `freeform_reminder` are the player-facing projection of the turn: prose, changes, current board, action handles, and free-action permission. `post_state`, `mid_state`, and `final_state` are internal ledger evidence. Do not paste raw full JSON into ordinary play unless the user asked for debug/raw state; if they did, mark `raw_state_requested: true` on the turn or transcript.
 

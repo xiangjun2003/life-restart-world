@@ -275,6 +275,8 @@ Action entries are affordances, not restrictions. Avoid phrasing that implies th
 
 Good action entries are concrete enough to act on and different enough to create real agency. In most turns, include a steady option, a risky or costly option, and a relationship or faction-facing option. Add a world-specific or talent-specific option when the state supports it.
 
+For QA transcripts, every durable visible change should be traceable to the internal `delta` and that turn's `post_state`. If the story says a relationship improved, evidence appeared, pressure changed, a thread opened or closed, or an event happened, the post-turn ledger should prove it.
+
 For playtest transcripts, record the player-facing sections separately:
 
 - `story_scene`: the actual scene prose or a faithful excerpt, not only the event title.

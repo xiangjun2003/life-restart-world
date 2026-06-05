@@ -86,7 +86,7 @@ python3 scripts/simulate_life.py turn --state state.json --intent intent.json --
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 python3 scripts/validate_checkpoint.py checkpoint.json
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-landed-deltas 8 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
@@ -98,9 +98,9 @@ Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed t
 
 When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; for `freeform` or `modified_entry`, `last_delta.intent_trace` should show which custom action parts reached ledger hooks. Do not expose the structured objects to the player unless they ask for raw state.
 
-Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
+Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, checks whether turn deltas land in `post_state`, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
 
-For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, `visible_actions` for the 2-4 player-facing action entries, `freeform_reminder` for the reminder that the user can act freely, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, `--min-visible-actions`, `--min-freeform-reminders`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
+For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, `visible_actions` for the 2-4 player-facing action entries, `freeform_reminder` for the reminder that the user can act freely, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, `--min-visible-actions`, `--min-freeform-reminders`, `--min-landed-deltas`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
 
 Use the canonical transcript fields above for new playtests. `validate_playtest.py` accepts a few older aliases as compatibility input, but strict QA warns on aliases so new transcripts stay consistent.
 

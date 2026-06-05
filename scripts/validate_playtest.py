@@ -114,6 +114,27 @@ FREEFORM_REMINDER_PATTERNS = [
     "free-form",
     "anything else",
 ]
+DURABLE_DELTA_KEYS = {
+    "age",
+    "time",
+    "life_cap",
+    "existence_state",
+    "realm",
+    "terminal",
+    "terminal_reason",
+    "attributes",
+    "relationships",
+    "pressure_clocks",
+    "evidence",
+    "flags_added",
+    "flags_removed",
+    "threads_added",
+    "threads_closed",
+    "phase_summary",
+    "event_material",
+    "event_ids",
+    "timeline_item",
+}
 
 
 def load_transcript(value: str) -> dict[str, Any]:
@@ -616,6 +637,113 @@ def turn_deltas(turn: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     return deltas
 
 
+def delta_landing_candidates(turn: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    delta = turn.get("delta")
+    if isinstance(delta, dict):
+        return [("delta", delta)]
+    post_state = turn.get("post_state")
+    if isinstance(post_state, dict) and isinstance(post_state.get("last_delta"), dict):
+        return [("post_state.last_delta", post_state["last_delta"])]
+    return []
+
+
+def has_durable_delta_material(delta: dict[str, Any]) -> bool:
+    for key in DURABLE_DELTA_KEYS:
+        value = delta.get(key)
+        if value not in (None, "", [], {}):
+            return True
+    return False
+
+
+def after_value(value: Any) -> Any:
+    if isinstance(value, list) and value:
+        return value[-1]
+    return value
+
+
+def equivalent_delta_value(expected: Any, actual: Any) -> bool:
+    if isinstance(expected, dict) and "label" in expected:
+        expected = expected.get("label")
+    if isinstance(actual, dict) and "label" in actual:
+        actual = actual.get("label")
+    if validate_state.is_int_like(expected) and validate_state.is_int_like(actual):
+        return int(expected) == int(actual)
+    return expected == actual
+
+
+def check_scalar_delta_landing(delta: dict[str, Any], turn: dict[str, Any], post_state: dict[str, Any], path: str, index: int, warnings: list[str]) -> None:
+    for key in ["age", "time", "life_cap", "existence_state", "realm", "terminal", "terminal_reason"]:
+        if key not in delta:
+            continue
+        expected = after_value(delta.get(key))
+        if key not in post_state:
+            warnings.append(f"turns[{index}].{path}.{key} cannot land because post_state.{key} is missing")
+            continue
+        actual = post_state.get(key)
+        if not equivalent_delta_value(expected, actual):
+            warnings.append(f"turns[{index}].{path}.{key} expected post_state value {expected!r}, got {actual!r}")
+        pre_state = turn.get("state")
+        if isinstance(pre_state, dict) and isinstance(delta.get(key), list) and delta.get(key):
+            before = delta[key][0]
+            if key in pre_state and not equivalent_delta_value(before, pre_state.get(key)):
+                warnings.append(f"turns[{index}].{path}.{key} before-value {before!r} does not match state.{key}={pre_state.get(key)!r}")
+
+
+def check_attribute_delta_landing(delta: dict[str, Any], turn: dict[str, Any], post_state: dict[str, Any], path: str, index: int, warnings: list[str]) -> None:
+    attrs = delta.get("attributes")
+    if not isinstance(attrs, dict) or not attrs:
+        return
+    post_attrs = post_state.get("attributes")
+    if not isinstance(post_attrs, dict):
+        warnings.append(f"turns[{index}].{path}.attributes cannot land because post_state.attributes is missing")
+        return
+    pre_state = turn.get("state")
+    pre_attrs = pre_state.get("attributes") if isinstance(pre_state, dict) else None
+    for attr, raw_delta in attrs.items():
+        if not validate_state.is_int_like(raw_delta):
+            continue
+        if attr not in post_attrs or not validate_state.is_int_like(post_attrs.get(attr)):
+            warnings.append(f"turns[{index}].{path}.attributes.{attr} cannot land because post_state.attributes.{attr} is missing or nonnumeric")
+            continue
+        delta_value = int(raw_delta)
+        if not isinstance(pre_attrs, dict) or attr not in pre_attrs or not validate_state.is_int_like(pre_attrs.get(attr)):
+            warnings.append(f"turns[{index}].{path}.attributes.{attr} needs turn state with pre-turn value to prove {delta_value:+d} landed")
+            continue
+        expected = int(pre_attrs[attr]) + delta_value
+        actual = int(post_attrs[attr])
+        if actual != expected:
+            warnings.append(f"turns[{index}].{path}.attributes.{attr} expected post_state value {expected} from pre-state plus delta, got {actual}")
+
+
+def check_turn_delta_landing(turn: dict[str, Any], index: int, errors: list[str], warnings: list[str]) -> bool:
+    candidates = delta_landing_candidates(turn)
+    if not candidates:
+        return False
+    post_state = turn.get("post_state")
+    if not isinstance(post_state, dict):
+        warnings.append(f"turns[{index}] has delta evidence but no post_state; durable changes cannot be proven on the protagonist ledger")
+        return False
+
+    landed = 0
+    for path, delta in candidates:
+        if not has_durable_delta_material(delta):
+            warnings.append(f"turns[{index}].{path} has no durable state material; summary-only deltas do not prove ledger change")
+            continue
+        delta_errors: list[str] = []
+        delta_warnings: list[str] = []
+        validate_state.check_last_delta(delta, post_state, delta_errors, delta_warnings)
+        check_scalar_delta_landing(delta, turn, post_state, path, index, delta_warnings)
+        check_attribute_delta_landing(delta, turn, post_state, path, index, delta_warnings)
+        for error in delta_errors:
+            errors.append(f"turns[{index}].{path} cannot be checked against post_state: {error}")
+        if path != "post_state.last_delta":
+            for warning in delta_warnings:
+                warnings.append(f"turns[{index}].{path} does not land cleanly in post_state: {warning}")
+        if not delta_errors and not delta_warnings:
+            landed += 1
+    return landed > 0
+
+
 def known_hooks_from_turn(turn: dict[str, Any]) -> set[str]:
     hooks: set[str] = set()
     for key in ["state", "post_state"]:
@@ -797,6 +925,7 @@ def validate(
     forbid_raw_state: bool = False,
     min_visible_actions: int = 0,
     min_freeform_reminders: int = 0,
+    min_landed_deltas: int = 0,
 ) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -822,6 +951,7 @@ def validate(
     freeform_turns = 0
     modified_entry_turns = 0
     turns_with_delta = 0
+    turns_with_landed_delta = 0
     turns_with_affordances = 0
     turns_with_story_scene = 0
     turns_with_visible_delta = 0
@@ -856,6 +986,8 @@ def validate(
             check_turn_intent_trace(turn, source, index, errors, warnings)
         if turn_has_delta(turn):
             turns_with_delta += 1
+            if check_turn_delta_landing(turn, index, errors, warnings):
+                turns_with_landed_delta += 1
         else:
             warnings.append(f"turns[{index}] has no delta or post-state last_delta")
         if has_story_scene(turn):
@@ -898,6 +1030,8 @@ def validate(
         warnings.append(f"playtest has {freeform_turns} freeform turns; expected at least {min_freeform}")
     if modified_entry_turns < min_modified_entry:
         warnings.append(f"playtest has {modified_entry_turns} modified_entry turns; expected at least {min_modified_entry}")
+    if turns_with_landed_delta < min_landed_deltas:
+        warnings.append(f"playtest has {turns_with_landed_delta} landed deltas; expected at least {min_landed_deltas}")
     if turns and not per_turn_state_snapshots:
         warnings.append("playtest has no per-turn state snapshots")
     if turns and not turns_with_affordances:
@@ -965,6 +1099,7 @@ def validate(
         "freeform_turns": freeform_turns,
         "modified_entry_turns": modified_entry_turns,
         "turns_with_delta": turns_with_delta,
+        "turns_with_landed_delta": turns_with_landed_delta,
         "turns_with_story_scene": turns_with_story_scene,
         "turns_with_visible_delta": turns_with_visible_delta,
         "turns_with_visible_actions": turns_with_visible_actions,
@@ -986,7 +1121,7 @@ def validate(
 
 
 def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--min-visible-actions N] [--min-freeform-reminders N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-landed-deltas N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--min-visible-actions N] [--min-freeform-reminders N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
@@ -1000,6 +1135,7 @@ def main(argv: list[str]) -> int:
     min_turns = 0
     min_freeform = 0
     min_modified_entry = 0
+    min_landed_deltas = 0
     min_visible_snapshots = 0
     min_story_scenes = 0
     min_visible_deltas = 0
@@ -1012,6 +1148,7 @@ def main(argv: list[str]) -> int:
         ("--min-turns", "min_turns"),
         ("--min-freeform", "min_freeform"),
         ("--min-modified-entry", "min_modified_entry"),
+        ("--min-landed-deltas", "min_landed_deltas"),
         ("--min-visible-snapshots", "min_visible_snapshots"),
         ("--min-story-scenes", "min_story_scenes"),
         ("--min-visible-deltas", "min_visible_deltas"),
@@ -1035,6 +1172,8 @@ def main(argv: list[str]) -> int:
             min_freeform = value
         elif target == "min_modified_entry":
             min_modified_entry = value
+        elif target == "min_landed_deltas":
+            min_landed_deltas = value
         elif target == "min_visible_snapshots":
             min_visible_snapshots = value
         elif target == "min_story_scenes":
@@ -1075,6 +1214,7 @@ def main(argv: list[str]) -> int:
         forbid_raw_state=forbid_raw_state,
         min_visible_actions=min_visible_actions,
         min_freeform_reminders=min_freeform_reminders,
+        min_landed_deltas=min_landed_deltas,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not result["ok"]:
