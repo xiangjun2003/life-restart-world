@@ -22,8 +22,8 @@ License: MIT. Preserve `references/lifeRestart-LICENSE.md` when reusing substant
 | Upstream | Skill |
 | --- | --- |
 | `AGE` | `state.age` |
-| `CHR`, `INT`, `STR`, `MNY`, `SPR` | `state.attributes` |
-| `LIF` | terminal pressure or life force |
+| `CHR`, `INT`, `STR`, `MNY`, `SPR`, `LUK` | `state.attrs` |
+| `LIF` | terminal pressure or life force shortcut; not stored as a normal attr |
 | `TLT` | `state.talents` |
 | `EVT` / `AEVT` | `state.event_history` |
 | `include` / `exclude` | content-pack conditions |
@@ -38,4 +38,4 @@ The original game outputs compact event text. This skill outputs complete narrat
 
 ## Long Life And Ascension
 
-The upstream age table reaches 500 and includes cultivation, resurrection, ascension, and post-human branches. Therefore this skill must not hard-code a 100-year limit. Use `life_cap`, `existence_state`, `realm`, and terminal events instead.
+The upstream age table reaches 500 and includes cultivation, resurrection, ascension, and post-human branches. Therefore this skill must not hard-code a 100-year limit. In v1, represent long-life branches with flags such as `existence_cultivator`, `life_extended`, `existence_ascended`, event history, and terminal state.

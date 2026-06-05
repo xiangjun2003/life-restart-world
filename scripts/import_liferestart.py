@@ -21,6 +21,8 @@ NS = {
     "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
 }
 
+EFFECT_KEYS = {"CHR", "INT", "STR", "MNY", "SPR", "LUK", "AGE", "LIF"}
+
 
 def text_of(element: ET.Element | None) -> str:
     if element is None:
@@ -146,6 +148,8 @@ def parse_effects(record: dict[str, list[Any]]) -> dict[str, int]:
         if not key.startswith("effect:"):
             continue
         prop = key.split(":", 1)[1]
+        if prop not in EFFECT_KEYS:
+            continue
         total = 0
         for value in values:
             if value is None:
@@ -208,24 +212,19 @@ def parse_events(path: Path) -> list[dict[str, Any]]:
         event_id = first(record, "$id")
         if event_id is None:
             continue
-        branches = [branch for value in record.get("branch[]", []) if (branch := condition_branch(value))]
         effects = parse_effects(record)
         terminal = effects.get("LIF", 0) < 0
         event = {
             "id": str(event_id),
             "title": str(first(record, "event", event_id)),
-            "grade": first(record, "grade"),
-            "post_event": first(record, "postEvent"),
+            "weight": max(1, int(first(record, "grade", 1) or 1)),
             "effects": effects,
-            "no_random": bool(first(record, "NoRandom", False)),
             "include": first(record, "include"),
             "exclude": first(record, "exclude"),
-            "branches": branches,
             "terminal": terminal,
             "terminal_reason": "Life force fell below survival." if terminal else None,
             "tags": ["upstream_event"],
             "narrative_seed": str(first(record, "event", "")),
-            "choices": [choice for choice in [event_to_choice(first(record, "postEvent"))] if choice],
             "source": "VickScarlet/lifeRestart MIT",
         }
         events.append({k: v for k, v in event.items() if v not in (None, [], {})})
@@ -311,14 +310,14 @@ def build_pack(source: Path, locale: str) -> dict[str, Any]:
         "title": f"Life Restart upstream converted pack ({locale})",
         "license": "MIT; preserve references/lifeRestart-LICENSE.md and upstream attribution.",
         "source_repository": "https://github.com/VickScarlet/lifeRestart",
-        "compatible_realms": ["human_world"],
         "compatible_world_tags": ["classic", "upstream", "life-restart"],
         "attributes": {
             "CHR": "颜值 / charm",
             "INT": "智力 / intelligence",
             "STR": "体质 / strength",
             "MNY": "家境 / money",
-            "SPR": "快乐 / spirit"
+            "SPR": "快乐 / spirit",
+            "LUK": "运气 / luck"
         },
         "talents": parse_talents(talents_path),
         "events": parse_events(events_path),

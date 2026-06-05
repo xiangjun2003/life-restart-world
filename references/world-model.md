@@ -1,319 +1,160 @@
 # World Model
 
-The simulator is narrative-first but stateful. Every turn must preserve a structured ledger. The ledger is the minimum viable engine: if helper scripts or event packs are unavailable or unsuitable, continue by maintaining this state directly.
+Live Play uses a small LifeRestart-like state. The state exists to keep consequences stable; it is not a full world database and not a transcript.
 
-## Canonical State
+## LifeState v1
+
+Canonical shape:
 
 ```json
 {
   "version": 1,
-  "session_id": "life-001",
-  "turn": 0,
-  "pace": "standard",
   "age": 0,
-  "time": {"label": "0岁", "scale": "years"},
-  "life_cap": 100,
-  "existence_state": "mortal",
-  "realm": "human_world",
-  "world": {
-    "style": "realistic",
-    "premise": "ordinary life with rare legendary branches",
-    "session_note": {
-      "tone": "grounded with rare legendary branches",
-      "state_axes": ["education_path", "family_pressure"],
-      "pressure_clocks": {}
-    }
-  },
-  "attributes": {
+  "attrs": {
     "CHR": 4,
     "INT": 6,
     "STR": 5,
     "MNY": 4,
     "SPR": 5,
-    "LUK": 5,
-    "WIL": 5
+    "LUK": 5
   },
   "talents": [],
-  "relationships": {},
-  "pressure_clocks": {},
-  "evidence": {},
-  "phase_summaries": [],
   "flags": [],
   "event_history": [],
-  "open_threads": [],
-  "timeline": [],
-  "terminal": false,
-  "terminal_reason": null
+  "special_candidates": [],
+  "terminal": false
 }
 ```
 
-Use `world.content_pack` only for a real referenced pack such as `classic-lite`. For custom or no-pack worlds, omit the field and include `world.session_note`; do not use empty-string placeholders.
-
-Use `world.pack_policy` to make event-pack usage auditable:
-
-```json
-{
-  "mode": "reference",
-  "evaluated_packs": ["classic-lite"],
-  "reason": "Inspected for tone; adjudication stays manual for this custom setting."
-}
-```
-
-Modes are `none`, `reference`, `adjudication`, and `active`. In `none` or `reference` custom worlds, event ids should use `manual_*`; `reference` should list inspected packs in `evaluated_packs` instead of `world.content_pack`; `active` should only appear with a real `world.content_pack`.
+Optional developer fields such as `session_id`, `turn`, `rng_seed`, or `notes` may appear in tool output, but the Game Master should not depend on them during ordinary play. Do not add relationship boards, pressure clocks, evidence objects, phase summaries, or open-thread lists in v1.
 
 ## Attributes
 
-- `CHR`: presence, charm, appearance, social first impression.
-- `INT`: learning, reasoning, planning.
-- `STR`: health, physical resilience.
+- `CHR`: charm, appearance, presence, and social first impression.
+- `INT`: learning, reasoning, planning, technical ability.
+- `STR`: health, physical resilience, stamina.
 - `MNY`: family resources and later personal resources.
 - `SPR`: happiness, morale, emotional energy.
-- `LUK`: fortune, unlikely help, odd survivals.
-- `WIL`: willpower, discipline, persistence under cost.
-- `LIF`: life force. Usually implicit as alive unless an event uses it.
+- `LUK`: fortune, unlikely help, strange survivals.
 
-Keep attributes roughly in a `0-10` human range unless the world has crossed into cultivation, immortal, post-human, or other legendary states.
+Keep ordinary human attributes roughly in `0-10`. Legendary, cultivation, immortal, or post-human arcs may exceed that range when flags and narration justify it.
 
-Use `attribute_notes` when an ordinary mortal attribute exceeds the usual range and should remain playable instead of being repeatedly increased. The note should explain the fiction and future-delta policy:
+`LIF` can appear in event `effects` as a life-force shortcut. It is not stored as a normal attribute. If an event or ruling reduces `LIF` below survival, set `terminal`.
+
+## Talents
+
+Talents are compact traits that bias interpretation. They may be strings or small objects with `id`, `name`, `description`, `effects`, and `tags`.
+
+Examples:
+
+```json
+[
+  {"id": "early_reader", "name": "早慧", "effects": {"INT": 1, "SPR": -1}},
+  "root_of_cultivation"
+]
+```
+
+During play, talents should create opportunities, costs, temptations, and failure modes. They do not guarantee success.
+
+## Flags
+
+Flags are the main durable memory surface. Use them for:
+
+- traits and conditions that should keep affecting play,
+- old relationship facts reduced to simple memory,
+- current goals or pressures,
+- acquired resources or scars,
+- supernatural transitions,
+- special branch prerequisites.
+
+Good flags are short and reusable:
+
+```json
+[
+  "teacher_noticed",
+  "family_money_pressure",
+  "computer_curiosity",
+  "existence_cultivator",
+  "ascended_from_human_world"
+]
+```
+
+Do not put every sentence into flags. Add a flag only when it can change a later event, choice, failure, or ending.
+
+## Event History
+
+`event_history` records event IDs that already mattered. It supports:
+
+- preventing one-time events from repeating,
+- unlocking prerequisite branches,
+- explaining later-age starts,
+- summarizing what the character has already lived.
+
+Manual or model-created events should still have stable IDs, usually `manual_*`, such as `manual_prologue_secret_savings` or `manual_failed_get_rich_scheme`.
+
+## Special Candidates
+
+`special_candidates` is a short list of event IDs that have been unlocked but not yet resolved.
+
+Use it for events with prerequisite chains:
+
+1. A normal event, flag, talent, or player action satisfies the event's `special_when` condition.
+2. Add the event ID to `special_candidates`.
+3. When choosing next event material, check `special_candidates` before ordinary age candidates.
+4. If the event is resolved, remove it unless the event is `repeatable: true`.
+
+Example:
 
 ```json
 {
-  "attribute_notes": {
-    "WIL": {
-      "note": "Rare practiced discipline under long family and exam pressure; not supernatural endurance.",
-      "future_delta_policy": "Do not add WIL for ordinary grinding; reward sustainable choices with SPR or pressure relief instead."
-    }
-  }
+  "flags": ["found_hidden_manual"],
+  "event_history": ["hidden_manual"],
+  "special_candidates": ["ascension_gate"]
 }
 ```
 
-## Existence States
+Do not let `special_candidates` become a quest log. Keep it to genuinely unlocked branches that deserve priority when the next scene is offered.
 
-Do not hard-cap lives at 100.
+## Terminal
 
-- `mortal`: ordinary human life.
-- `resurrected`: returned after a death or near-death terminal branch.
-- `cultivator`: life cap can extend to hundreds of years.
-- `immortal`: aging is no longer the main pressure.
-- `ascended`: the human-life arc has ended; optionally begin a higher-realm arc.
-- `post_human`: transformed beyond ordinary human categories.
+`terminal` is `false` while the current arc is active. When the life or human-life arc ends, set it to an object:
 
-Use `life_cap` as the current expected maximum, not as an absolute. Events may raise it, lower it, or end the arc before it is reached.
+```json
+{
+  "kind": "death",
+  "reason": "The life closes in old age.",
+  "event_id": "ordinary_old_age"
+}
+```
 
-When age reaches or passes `life_cap`, do not silently keep ordinary play moving. A mortal or resurrected life should either become terminal, receive a concrete life-extension event, or transform into another `existence_state`. A cultivator at the cap needs a breakthrough, failure, extension, or terminal consequence. For immortality, ascension, or post-human play, keep `life_cap` meaningful if aging still matters; otherwise use `time` and phase summaries to track eras, realms, or cycles.
+Useful `kind` values include `death`, `ending`, `ascension`, `transformation`, `failure`, and `retirement`.
 
-Any resurrection, ascension, immortality, or post-human transition should land in the ledger, not only in prose: update `existence_state`, `realm` when relevant, `life_cap` when aging still matters, `flags`, `timeline`, and usually a `phase_summaries` item that closes the prior human-life arc. Then offer new action entries for the next realm or ask whether the user wants a summary ending.
+If play continues after resurrection, ascension, reincarnation, or a higher-realm start, clear `terminal` back to `false` and add flags/event history that explain the new active arc.
 
-Minimum transition shape at a life-cap pressure point:
+## Age And Long-Life Branches
+
+Do not hard-cap age at 100. Age is just the current time marker.
+
+When play continues beyond ordinary human limits, the state must explain why through flags and event history, for example:
 
 ```json
 {
   "age": 160,
-  "life_cap": 300,
-  "existence_state": "immortal",
-  "realm": "human_world",
-  "flags": ["life_cap_broken", "merit_anchor_complete"],
-  "event_history": ["manual_life_cap_breakthrough"],
-  "timeline": [
-    {
-      "turn": 9,
-      "age": 160,
-      "event_id": "manual_life_cap_breakthrough",
-      "title": "寿限点突破",
-      "action": "交付人间功德碑后冲击天门"
-    }
-  ],
-  "phase_summaries": [
-    {
-      "id": "phase_mortal_to_immortal",
-      "age": 160,
-      "summary": "The mortal old-age arc closes; aging stops being the main pressure.",
-      "closed_threads": ["late_mortal_regret", "family_farewell"],
-      "carried_threads": ["ascension_threshold"],
-      "closed_clocks": ["mortal_life_cap"],
-      "outcomes": ["immortal_body", "unfinished_higher_realm_choice"],
-      "next_phase": "ascension_gate"
-    }
-  ],
-  "terminal": false,
-  "terminal_reason": null
+  "flags": ["found_hidden_manual", "existence_cultivator", "life_extended"],
+  "event_history": ["hidden_manual", "manual_life_extension_breakthrough"],
+  "terminal": false
 }
 ```
 
-If the next beat is final ascension instead of continued play, keep the same state sync and set `existence_state: "ascended"`, update `realm`, set `terminal: true`, and use `terminal_reason` to explain that the human-life arc ended by transformation rather than ordinary death.
-
-## Pace
-
-Default `standard` pace should produce about 25-45 meaningful turns.
-
-- `detailed`: 40-70 turns; use 1 year or smaller critical beats often.
-- `standard`: 25-45 turns; use yearly turns in youth, then larger life beats.
-- `fast`: 10-18 turns; use compressed arcs.
-
-Age increments are not rigid. A turn is a meaningful life beat. Youth usually moves slower than later adulthood. Supernatural states may use decades or realm breakthroughs as beats.
-
-For `standard` pace, a useful default is:
-
-- Ages 0-6: 1-2 years per turn unless a childhood scene is important.
-- Ages 7-22: usually 1 year per turn.
-- Ages 23-45: 1-2 years per turn.
-- Ages 46-70: 2-4 years per turn.
-- Ages 70+: 3-7 years per turn, unless a terminal or relationship scene needs focus.
-- Cultivation, ascension, immortality, and post-human play can use breakthroughs, eras, or realm transitions instead of calendar years.
+For immortal or post-human arcs, age may become symbolic, but keep it as a number for compatibility. Use narration to explain eras, realms, or transformations.
 
 ## State Discipline
 
-- Put durable facts in `flags`, not only in prose.
-- Put unresolved goals or tensions in `open_threads`.
-- Put recurring people in `relationships` with a score from `-5` to `5` and a short note when helpful.
-- Put slow pressure in `pressure_clocks` when a binary flag is too crude.
-- Put investigable claims, proofs, objects, and witness chains in `evidence` when flags are too flat.
-- Put completed arcs in `phase_summaries` when they should still be remembered but no longer drive every turn.
-- Use `time` when several meaningful turns happen inside the same age.
-- Put all triggered event IDs in `event_history`.
-- Put each turn's story summary in `timeline`.
-- Keep `event_history` and `timeline` aligned. A manual ruling should still have a `manual_*` event id in both places.
-- If many turns share the same `age`, add `time` so the order stays playable.
-- Close stale `open_threads` when a later event resolves or supersedes them; the snapshot should show the current board, not every idea that ever appeared.
-- For custom or no-pack worlds, do not leave `world.session_note.state_axes` and `factions` only in the note. At least one current axis and one current faction should appear in active relationships, open threads, clocks, evidence, flags, `last_delta`, `last_intent`, or `next_affordances` hooks.
+- Update `age` only when the scene meaningfully advances time.
+- Update `attrs` when a durable ability, resource, health, morale, or luck state changes.
+- Update `flags` when a fact should affect future rulings.
+- Update `event_history` whenever an authored or manual event materially resolves.
+- Update `special_candidates` when prerequisite branches unlock or resolve.
+- Update `terminal` when an arc closes.
 
-The current board should stay small enough to scan. As a rule of thumb, keep no more than about 2-5 active relationships, 2-5 open threads or clocks, and only evidence that can affect the next few turns. Archive inactive contacts, resolved evidence, filled clocks, old promises, and completed arcs into relationship notes, flags, timeline, or `phase_summaries`. This is about the visible/current board, not erasing protagonist history.
-
-When a long phase is still active, use mid-arc cleanup before clutter becomes a validation warning. If `open_threads`, active evidence, or active relationships are nearing 7 items, merge sibling hooks and archive stale ones before adding more. Examples: turn `family_money_pressure` into a pressure clock or family note, merge `computer_practice_routine` and `computer_shop_access` into `computer_path`, or combine scattered investigation clues into one `evidence_packet_*` item with archived raw evidence IDs.
-
-Phase summaries are compact records of completed life segments:
-
-```json
-{
-  "id": "phase_exam_to_city",
-  "age": 18,
-  "summary": "The exam arc ended with a funded city-study track and a fragile promise to support the family.",
-  "closed_threads": ["exam_path", "leave_or_stay", "family_budget_contract"],
-  "carried_threads": ["city_life", "computer_path", "family_promise"],
-  "closed_clocks": ["exam_deadline"],
-  "archived_evidence": ["computer_room_permission"],
-  "outcomes": ["admission_notice", "funded_city_study_track"]
-}
-```
-
-Use them at school transitions, career shifts, relationship resolutions, investigation conclusions, old-age endings, ascension, resurrection, and higher-realm starts. A phase summary should reduce active clutter, not hide unresolved problems. When a clock or evidence item leaves the active board, prefer exact archive lists such as `closed_clocks`, `resolved_clocks`, `archived_clocks`, `closed_evidence`, `resolved_evidence`, `archived_evidence`, or `spent_evidence`; prose `outcomes` can explain the meaning after the structured reference.
-
-Relationship entries should be small but explicit:
-
-```json
-{
-  "mother": {
-    "score": 2,
-    "note": "protective, worried about money",
-    "tensions": ["angry about secrecy", "still protective"]
-  },
-  "teacher_li": {"score": 3, "note": "sees promise and expects discipline"},
-  "classmate_chen": {"score": -1, "note": "resentful after a public comparison"}
-}
-```
-
-Pressure clocks should include `stage`, `limit`, and `meaning`. They are best for exam deadlines, debt, illness, political danger, sect suspicion, burnout, or other tensions that should build over several turns. If a clock reaches its limit, either trigger its consequence soon or record `last_consequence` / `status` so the ledger shows it was honored. Once a clock is `resolved`, `closed`, `archived`, or otherwise inactive, move the outcome into `phase_summaries`, timeline, flags, or relationship notes instead of leaving the clock in the active board. In strict QA or checkpoint handoff, name removed clock IDs in `closed_clocks`, `resolved_clocks`, or `archived_clocks`.
-
-Pressure clocks can count down only when the clock meaning is phrased as a deficit or risk, such as "evidence gap" or "debt pressure". They are not a generic progress bar. For proof quality, prefer `evidence` entries with `status`, `holders`, and chain notes, then close or resolve the pressure clock when the evidence gap is handled.
-
-Evidence entries are optional but useful for investigative worlds:
-
-```json
-{
-  "father_cartridge": {
-    "claim": "The company knew the upper-dome leak was being blamed on low-sector demand.",
-    "status": "copied_and_witnessed",
-    "holders": ["mother", "rui", "school_archive"],
-    "risk": "high"
-  }
-}
-```
-
-Evidence should include enough custody to matter in play: at minimum a `claim` or `status`, plus `holders` when someone knows, stores, or can contest it. Evidence that is already `resolved`, `closed`, `archived`, `spent`, or inactive belongs in a phase summary, timeline, flag, or relationship note unless it can still change the next few turns. In strict QA or checkpoint handoff, name removed evidence IDs in `closed_evidence`, `resolved_evidence`, `archived_evidence`, or `spent_evidence`.
-
-Use `time` when age is too coarse:
-
-```json
-{
-  "age": 16,
-  "time": {"label": "16岁，高三前夜", "scale": "school_term", "beat": 7}
-}
-```
-
-If multiple playable turns share the same `age`, add `time` to the state and to the relevant timeline items. The current state-level `time` tells where play is now; timeline item times preserve the order of past beats.
-
-## Checkpoints
-
-A checkpoint is a compact export of the current ledger for save/resume and agent handoff. It is not a second source of truth during live play; it is a portable seed for reconstructing the ledger when context is missing.
-
-Good checkpoints preserve:
-
-- `session_id`, `turn`, `age`, `time`, `life_cap`, `realm`, `existence_state`, and terminal status,
-- `world` context, including `session_note` for custom or no-pack worlds,
-- current attributes and talents,
-- `attribute_notes` for any exceptional or clamped attributes,
-- active relationships or factions,
-- active pressure clocks, evidence, flags, and open threads,
-- phase summaries for completed arcs,
-- the last 3-6 timeline beats or a short phase summary,
-- 2-4 next affordances.
-
-They omit resolved clutter unless it is needed to understand a current relationship, flag, evidence item, or pressure clock. If the checkpoint is later resumed, rebuild the internal ledger from the checkpoint and continue; do not retcon recent timeline facts to fit a new random event.
-
-Compact checkpoint display is allowed, but resumed play must expand back to the full ledger shape. Avoid leaving clocks as strings like `"3/4"` or evidence as bare strings in the reconstructed state; use objects with stage/limit/meaning, status/claim, holders, and risk where relevant.
-
-`next_affordances` may be compact strings or small objects. Use objects when handoff fidelity matters:
-
-```json
-{
-  "label": "请李老师介绍更稳定的电脑学习路径",
-  "tags": ["technology", "mentor"],
-  "targets": ["teacher_li", "computer_path"],
-  "state_hooks": ["mentor_teacher", "computer_curiosity"],
-  "risk": "low"
-}
-```
-
-The label is what a player can read; the other fields help the next agent preserve intent and state pressure without treating the event library as an engine.
-
-For live-turn QA, `next_affordances` can also appear as an optional current-board field on the full state ledger. It is not protagonist history; replace it each turn or omit it outside debug, playtest, and handoff contexts.
-
-`last_intent` is also optional and current-turn scoped. It stores the latest parsed user action for QA or handoff, especially `source`, `selected_entry`, `modifiers`, `raw_action`, tags, targets, risk, and desired outcome. It should not replace `timeline`, `event_history`, or durable state changes.
-
-`last_delta` is optional and current-turn scoped. It stores what the latest turn claims to have changed, so validation can check that those event IDs, flags, threads, evidence, clocks, relationships, and phase summaries are visible in the actual ledger. It is an audit trace, not a second source of truth. Passing validation proves the named consequences were recorded; it does not prove the fiction, evidence claim, or clock movement was semantically wise.
-
-For `freeform` or `modified_entry` QA, `last_delta.intent_trace` can prove that the user's custom action survived adjudication:
-
-```json
-{
-  "source": "modified_entry",
-  "preserved": ["ask the teacher but hide the part-time job from family"],
-  "state_hooks": ["mentor_teacher", "secrecy_risk"],
-  "outcome": "teacher trust rose while secrecy pressure stayed active"
-}
-```
-
-Keep `intent_trace` small and current-turn scoped. It should point to existing or newly changed ledger hooks, not replace the story or the actual state delta.
-
-If a `world.session_note.pressure_clocks` item has resolved, move the outcome into `phase_summaries` and remove that clock from the session note. Keep only live pressure mirrored in top-level `pressure_clocks`.
-
-If a live clock appears in both `world.session_note.pressure_clocks` and top-level `pressure_clocks`, keep `stage` and `limit` synchronized. The top-level ledger is authoritative; the session note is context, not a second counter.
-
-Use `scripts/validate_checkpoint.py` for handoff capsules that are meant to be resumed by another agent. It checks the portable checkpoint shape; after resuming into a full ledger, use `scripts/validate_state.py`.
-
-## Prologue State
-
-For later-age starts, include a short prologue in `timeline` and derive state from it. Do not start at a later age with an empty history unless the premise explicitly involves amnesia, artificial creation, or missing records.
-
-Example prologue timeline item:
-
-```json
-{
-  "turn": "prologue",
-  "age": 7,
-  "event_id": "teacher_notice",
-  "summary": "A teacher noticed the child's unusual reading speed and lent old exam papers.",
-  "effects": {"INT": 1, "relationship:teacher": 2},
-  "flags": ["teacher_noticed"]
-}
-```
+The model may remember richer story context through conversation. The state only tracks facts that need rule-level continuity.

@@ -20,7 +20,7 @@ When a risky action is fictional but allowed, convert it into a consequence-bear
 {
   "intent": "attempt risky action",
   "risk": "high",
-  "checks": ["WIL", "INT"],
+  "checks": ["SPR", "INT"],
   "cost": {"SPR": -1},
   "safe_resolution": "summarize consequences without instructions"
 }

@@ -3,16 +3,27 @@
   "id": "classic-lite",
   "title": "Classic Lite Life Restart World",
   "license": "Original seed content for this skill. Inspired by life-restart mechanics; not copied from upstream event prose.",
-  "compatible_realms": ["human_world", "higher_realm"],
-  "compatible_world_tags": ["classic", "realistic", "county", "school", "career", "computer", "technology", "admission", "scholarship", "investigation", "ethics", "cultivation"],
+  "compatible_world_tags": [
+    "classic",
+    "realistic",
+    "county",
+    "school",
+    "career",
+    "computer",
+    "technology",
+    "admission",
+    "scholarship",
+    "investigation",
+    "ethics",
+    "cultivation"
+  ],
   "attributes": {
     "CHR": "presence, charm, appearance",
     "INT": "learning and reasoning",
     "STR": "health and resilience",
     "MNY": "resources",
     "SPR": "happiness and morale",
-    "LUK": "luck",
-    "WIL": "willpower"
+    "LUK": "luck"
   },
   "talents": [
     {
@@ -20,48 +31,77 @@
       "name": "早慧",
       "description": "你很早学会从书里寻找出口。",
       "grade": 1,
-      "effects": {"INT": 1, "SPR": -1},
-      "tags": ["education"]
+      "effects": {
+        "INT": 1,
+        "SPR": -1
+      },
+      "tags": [
+        "education"
+      ]
     },
     {
       "id": "stubborn_heart",
       "name": "拗劲",
       "description": "越是被看轻，你越不肯退。",
       "grade": 1,
-      "effects": {"WIL": 2, "SPR": -1},
-      "tags": ["will"]
+      "effects": {
+        "SPR": -1
+      },
+      "tags": [
+        "will"
+      ]
     },
     {
       "id": "good_bones",
       "name": "骨相好",
       "description": "你天生体格不错，恢复得也快。",
       "grade": 1,
-      "effects": {"STR": 2},
-      "tags": ["body"]
+      "effects": {
+        "STR": 2
+      },
+      "tags": [
+        "body"
+      ]
     },
     {
       "id": "old_coin",
       "name": "旧硬币",
       "description": "你出生时，掌心像是攥着一点奇怪的运气。",
       "grade": 2,
-      "effects": {"LUK": 2},
-      "tags": ["luck", "mystery"]
+      "effects": {
+        "LUK": 2
+      },
+      "tags": [
+        "luck",
+        "mystery"
+      ]
     },
     {
       "id": "thin_family_line",
       "name": "薄家底",
       "description": "家里给不了太多，但你很早理解钱的重量。",
       "grade": 0,
-      "effects": {"MNY": -1, "WIL": 1},
-      "tags": ["family", "money"]
+      "effects": {
+        "MNY": -1
+      },
+      "tags": [
+        "family",
+        "money"
+      ]
     },
     {
       "id": "root_of_cultivation",
       "name": "灵根微明",
       "description": "某些安静的夜里，你能感到世界背后还有一层呼吸。",
       "grade": 3,
-      "effects": {"LUK": 1, "INT": 1},
-      "tags": ["cultivation", "mystery"]
+      "effects": {
+        "LUK": 1,
+        "INT": 1
+      },
+      "tags": [
+        "cultivation",
+        "mystery"
+      ]
     }
   ],
   "events": [
@@ -69,821 +109,1426 @@
       "id": "birth_county",
       "title": "小城出生",
       "age": 0,
-      "realm": "human_world",
       "weight": 20,
       "repeatable": false,
-      "tags": ["birth", "family"],
-      "effects": {"SPR": 0},
-      "set_flags": ["ordinary_birth"],
-      "open_threads": ["family_origin"],
+      "tags": [
+        "birth",
+        "family"
+      ],
+      "effects": {
+        "SPR": 0
+      },
+      "set_flags": [
+        "ordinary_birth",
+        "family_origin"
+      ],
       "narrative_seed": "The life begins in an ordinary place where resources are limited but attention is close.",
-      "choices": ["Follow family expectations", "Quietly observe the adults", "Reach for whatever strange luck this life has"]
+      "choices": [
+        "Follow family expectations",
+        "Quietly observe the adults",
+        "Reach for whatever strange luck this life has"
+      ]
     },
     {
       "id": "early_sickness",
       "title": "幼年病弱",
-      "age_range": [1, 6],
-      "realm": "human_world",
+      "age_range": [
+        1,
+        6
+      ],
       "weight": 6,
       "repeatable": false,
       "include": "STR<=5",
-      "tags": ["health", "family"],
-      "effects": {"STR": -1, "SPR": -1, "WIL": 1},
-      "set_flags": ["childhood_illness"],
-      "relationships": {
-        "family": {"delta": 1, "note": "worry and care become part of childhood memory"}
+      "tags": [
+        "health",
+        "family"
+      ],
+      "effects": {
+        "STR": -1,
+        "SPR": -1
       },
+      "set_flags": [
+        "childhood_illness"
+      ],
       "narrative_seed": "A childhood illness makes the household rearrange itself around fever, medicine, and worry.",
-      "choices": ["Rest and recover slowly", "Become quieter and more observant", "Push yourself too early"]
+      "choices": [
+        "Rest and recover slowly",
+        "Become quieter and more observant",
+        "Push yourself too early"
+      ]
     },
     {
       "id": "childhood_observation",
       "title": "过早会看脸色",
-      "age_range": [2, 8],
-      "realm": "human_world",
+      "age_range": [
+        2,
+        8
+      ],
       "weight": 7,
       "repeatable": false,
-      "tags": ["family", "observation", "money"],
-      "effects": {"WIL": 1, "SPR": -1},
-      "set_flags": ["early_family_observer"],
-      "open_threads": ["family_money_pressure"],
-      "relationships": {
-        "family": {"delta": 1, "note": "the child learns the household mood before understanding its causes"}
+      "tags": [
+        "family",
+        "observation",
+        "money"
+      ],
+      "effects": {
+        "SPR": -1
       },
+      "set_flags": [
+        "early_family_observer",
+        "family_money_pressure"
+      ],
       "narrative_seed": "Before the character can name poverty, they learn to read pauses at the dinner table and numbers whispered at night.",
-      "choices": ["Stay quiet and observe", "Ask where the money goes", "Try to become less of a burden"]
+      "choices": [
+        "Stay quiet and observe",
+        "Ask where the money goes",
+        "Try to become less of a burden"
+      ]
     },
     {
       "id": "preschool_self_management",
       "title": "小小自管",
-      "age_range": [2, 6],
-      "realm": "human_world",
+      "age_range": [
+        2,
+        6
+      ],
       "weight": 6,
       "repeatable": false,
-      "tags": ["education", "family", "observation"],
-      "effects": {"WIL": 1},
-      "set_flags": ["preschool_self_management"],
-      "open_threads": ["early_school_readiness"],
-      "relationships": {
-        "family": {"delta": 1, "note": "notices the child trying to help before being asked"}
-      },
+      "tags": [
+        "education",
+        "family",
+        "observation"
+      ],
+      "effects": {},
+      "set_flags": [
+        "preschool_self_management",
+        "early_school_readiness"
+      ],
       "narrative_seed": "In the quiet years before formal pressure arrives, the character learns to manage small tasks and read simple words from whatever paper is nearby.",
-      "choices": ["Keep learning quietly", "Help with small chores", "Ask for harder books"]
+      "choices": [
+        "Keep learning quietly",
+        "Help with small chores",
+        "Ask for harder books"
+      ]
     },
     {
       "id": "screen_curiosity",
       "title": "屏幕那头的光",
-      "age_range": [5, 12],
-      "realm": "human_world",
+      "age_range": [
+        5,
+        12
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "INT>=6|TLT?[early_reader]",
-      "tags": ["technology", "observation", "education"],
-      "effects": {"INT": 1, "SPR": 1},
-      "set_flags": ["early_screen_curiosity"],
-      "open_threads": ["computer_curiosity"],
+      "tags": [
+        "technology",
+        "observation",
+        "education"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": 1
+      },
+      "set_flags": [
+        "early_screen_curiosity",
+        "computer_curiosity"
+      ],
       "narrative_seed": "A borrowed screen, a shop window, or a school corner machine turns curiosity into a private direction.",
-      "choices": ["Remember every detail", "Ask an adult what computers can do", "Look for books or discarded parts"]
+      "choices": [
+        "Remember every detail",
+        "Ask an adult what computers can do",
+        "Look for books or discarded parts"
+      ]
     },
     {
       "id": "childhood_spirit_sign",
       "title": "童年异兆",
-      "age_range": [1, 12],
-      "realm": "human_world",
+      "age_range": [
+        1,
+        12
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "TLT?[root_of_cultivation,old_coin]|LUK>=8",
-      "tags": ["cultivation", "mystery", "luck"],
-      "effects": {"LUK": 1, "SPR": -1},
-      "set_flags": ["latent_cultivation"],
-      "open_threads": ["latent_cultivation"],
+      "tags": [
+        "cultivation",
+        "mystery",
+        "luck"
+      ],
+      "effects": {
+        "LUK": 1,
+        "SPR": -1
+      },
+      "set_flags": [
+        "latent_cultivation"
+      ],
       "narrative_seed": "A small impossible sign appears in childhood, too strange to explain and too quiet to prove.",
-      "choices": ["Keep the sign secret", "Ask an elder about old stories", "Treat it as a childish illusion"]
+      "choices": [
+        "Keep the sign secret",
+        "Ask an elder about old stories",
+        "Treat it as a childish illusion"
+      ]
     },
     {
       "id": "teacher_notice",
       "title": "被老师注意",
-      "age_range": [7, 13],
-      "realm": "human_world",
+      "age_range": [
+        7,
+        13
+      ],
       "weight": 12,
       "repeatable": false,
       "include": "INT>=6",
-      "tags": ["education", "mentor"],
-      "effects": {"INT": 1, "SPR": 1},
-      "set_flags": ["teacher_noticed"],
-      "close_threads": ["early_school_readiness"],
-      "open_threads": ["exam_path"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "recognizes unusual effort and expects discipline"}
+      "tags": [
+        "education",
+        "mentor"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": 1
       },
-      "pressure_clocks": {
-        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
-      },
+      "set_flags": [
+        "teacher_noticed",
+        "exam_path"
+      ],
       "narrative_seed": "A teacher notices unusual effort and quietly opens a door.",
-      "choices": ["Lean into study", "Hide the attention from family pressure", "Ask the teacher for a harder path"]
+      "choices": [
+        "Lean into study",
+        "Hide the attention from family pressure",
+        "Ask the teacher for a harder path"
+      ],
+      "clear_flags": [
+        "early_school_readiness"
+      ]
     },
     {
       "id": "primary_school_routine",
       "title": "把入学过稳",
-      "age_range": [7, 10],
-      "realm": "human_world",
+      "age_range": [
+        7,
+        10
+      ],
       "weight": 6,
       "repeatable": false,
-      "include": "flags?[preschool_self_management]|WIL>=6",
-      "tags": ["education", "family", "school", "discipline"],
-      "effects": {"INT": 1, "WIL": 1},
-      "set_flags": ["primary_school_routine"],
-      "close_threads": ["early_school_readiness"],
-      "open_threads": ["education_path"],
-      "relationships": {
-        "family": {"delta": 1, "note": "trusts the child to keep school and small household tasks steady"}
+      "include": "flags?[preschool_self_management]|SPR>=6",
+      "tags": [
+        "education",
+        "family",
+        "school",
+        "discipline"
+      ],
+      "effects": {
+        "INT": 1
       },
-      "pressure_clocks": {
-        "school_fit": {"status": "resolved", "set_stage": 0, "limit": 4, "meaning": "小学适应压力"},
-        "family_debt": {"delta": 1, "limit": 5, "meaning": "家里经济余地变窄"}
-      },
+      "set_flags": [
+        "primary_school_routine",
+        "education_path"
+      ],
       "narrative_seed": "The child is not transformed by one brilliant moment; school becomes survivable through routines, chores, and stubborn repetition.",
-      "choices": ["Keep the steady routine", "Help family even more", "Ask for help with the hardest subject"]
+      "choices": [
+        "Keep the steady routine",
+        "Help family even more",
+        "Ask for help with the hardest subject"
+      ],
+      "clear_flags": [
+        "early_school_readiness"
+      ]
     },
     {
       "id": "playground_confidence",
       "title": "操场上的一点亮",
-      "age_range": [7, 10],
-      "realm": "human_world",
+      "age_range": [
+        7,
+        10
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "STR>=6|CHR>=6|SPR<=3",
-      "tags": ["relationship", "health", "school", "friend"],
-      "effects": {"STR": 1, "SPR": 1},
-      "set_flags": ["playground_confidence"],
-      "open_threads": ["peer_support_seed"],
-      "relationships": {
-        "close_classmate": {"delta": 1, "note": "a schoolmate notices the character outside grades and money pressure"}
+      "tags": [
+        "relationship",
+        "health",
+        "school",
+        "friend"
+      ],
+      "effects": {
+        "STR": 1,
+        "SPR": 1
       },
+      "set_flags": [
+        "playground_confidence",
+        "peer_support_seed"
+      ],
       "narrative_seed": "A small playground success gives the character a peer connection before school becomes only pressure.",
-      "choices": ["Turn friendship into mutual help", "Keep it as a quiet comfort", "Use the confidence to ask a teacher for help"]
+      "choices": [
+        "Turn friendship into mutual help",
+        "Keep it as a quiet comfort",
+        "Use the confidence to ask a teacher for help"
+      ]
     },
     {
       "id": "steady_student_reputation",
       "title": "稳稳被信任",
-      "age_range": [8, 13],
-      "realm": "human_world",
+      "age_range": [
+        8,
+        13
+      ],
       "weight": 7,
       "repeatable": false,
       "include": "flags?[teacher_noticed]",
-      "tags": ["education", "mentor", "relationship"],
-      "effects": {"INT": 1, "SPR": -1},
-      "set_flags": ["steady_student_reputation"],
-      "open_threads": ["county_school_track"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "trusts the student because effort stays quiet and consistent"}
+      "tags": [
+        "education",
+        "mentor",
+        "relationship"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
-      "pressure_clocks": {
-        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
-      },
+      "set_flags": [
+        "steady_student_reputation",
+        "county_school_track"
+      ],
       "narrative_seed": "Talent becomes reputation only after a long stretch of ordinary discipline: homework, restraint, and not making trouble.",
-      "choices": ["Keep the steady path", "Ask for more guidance", "Talk about school costs"]
+      "choices": [
+        "Keep the steady path",
+        "Ask for more guidance",
+        "Talk about school costs"
+      ]
     },
     {
       "id": "classmate_friendship",
       "title": "同伴的光",
-      "age_range": [10, 18],
-      "realm": "human_world",
+      "age_range": [
+        10,
+        18
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "SPR<=3",
-      "tags": ["relationship", "education", "friend"],
-      "effects": {"SPR": 2, "CHR": 1},
-      "set_flags": ["classmate_friendship"],
-      "open_threads": ["peer_support"],
-      "relationships": {
-        "close_classmate": {"delta": 2, "note": "shares jokes, notes, and a little breathing room inside pressure"}
+      "tags": [
+        "relationship",
+        "education",
+        "friend"
+      ],
+      "effects": {
+        "SPR": 2,
+        "CHR": 1
       },
+      "set_flags": [
+        "classmate_friendship",
+        "peer_support"
+      ],
       "narrative_seed": "A classmate notices the exhaustion behind the diligence and makes school feel less like a corridor walked alone.",
-      "choices": ["Accept the friendship", "Keep distance to focus", "Share a small secret"]
+      "choices": [
+        "Accept the friendship",
+        "Keep distance to focus",
+        "Share a small secret"
+      ]
     },
     {
       "id": "anonymous_fee_notes",
       "title": "匿名费用笔记",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "flags?[teacher_noticed]|flags?[classmate_friendship]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics"],
-      "effects": {"INT": 1, "SPR": -1, "WIL": 1},
-      "set_flags": ["anonymous_fee_notes"],
-      "open_threads": ["school_fee_pressure", "administrative_attention"],
-      "evidence": {
-        "anonymous_fee_notes": {
-          "claim": "Anonymous notes suggest some fees or tutoring lists may be unevenly applied.",
-          "status": "unverified_notes",
-          "holders": ["self"],
-          "risk": "medium"
-        }
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
+      "set_flags": [
+        "anonymous_fee_notes",
+        "school_fee_pressure",
+        "administrative_attention"
+      ],
       "narrative_seed": "A small investigation begins with anonymized notes, careful boundaries, and the risk of drawing administrative attention.",
-      "choices": ["Verify only public facts", "Ask a trusted teacher for boundaries", "Drop the matter and protect exam focus"]
+      "choices": [
+        "Verify only public facts",
+        "Ask a trusted teacher for boundaries",
+        "Drop the matter and protect exam focus"
+      ]
     },
     {
       "id": "public_fee_verification",
       "title": "公开栏核验",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "flags?[anonymous_fee_notes]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics", "school"],
-      "effects": {"SPR": -1},
-      "set_flags": ["public_fee_verification"],
-      "open_threads": ["evidence_boundary"],
-      "evidence": {
-        "posted_fee_notice": {
-          "claim": "Public fee notices can be compared against the anonymous notes without naming classmates.",
-          "status": "public_record_checked",
-          "holders": ["self", "school_notice_board"],
-          "risk": "low"
-        }
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics",
+        "school"
+      ],
+      "effects": {
+        "SPR": -1
       },
-      "pressure_clocks": {
-        "evidence_gap": {"delta": -1, "limit": 5, "meaning": "公开证据缺口"},
-        "administrative_attention": {"delta": 1, "limit": 4, "meaning": "学校行政关注风险"}
-      },
+      "set_flags": [
+        "public_fee_verification",
+        "evidence_boundary"
+      ],
       "narrative_seed": "Instead of chasing rumors, the student checks public notices, dates, and receipt language where anyone could verify them.",
-      "choices": ["Keep checking only public sources", "Ask a trusted teacher for boundaries", "Pause and protect exam focus"]
+      "choices": [
+        "Keep checking only public sources",
+        "Ask a trusted teacher for boundaries",
+        "Pause and protect exam focus"
+      ]
     },
     {
       "id": "teacher_boundary_counsel",
       "title": "向老师问边界",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[anonymous_fee_notes]&flags?[teacher_noticed]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics", "mentor"],
-      "effects": {"SPR": 1},
-      "set_flags": ["teacher_boundary_guardrail"],
-      "open_threads": ["evidence_boundary"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "sets boundaries so the student can avoid rumor, exposure, and exam self-sabotage"}
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics",
+        "mentor"
+      ],
+      "effects": {
+        "SPR": 1
       },
-      "evidence": {
-        "teacher_boundary_advice": {
-          "claim": "A trusted teacher advises checking only public facts and avoiding private names or documents.",
-          "status": "witnessed_guidance",
-          "holders": ["self", "mentor_teacher"],
-          "risk": "low"
-        }
-      },
-      "pressure_clocks": {
-        "administrative_attention": {"delta": -1, "limit": 4, "meaning": "学校行政关注风险"},
-        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
-      },
+      "set_flags": [
+        "teacher_boundary_guardrail",
+        "evidence_boundary"
+      ],
       "narrative_seed": "The teacher does not solve the problem, but gives the investigation a boundary: public facts, no names, and no sacrifice of the exam.",
-      "choices": ["Follow the boundary strictly", "Ask the teacher to mediate", "Seal the notes until after exams"]
+      "choices": [
+        "Follow the boundary strictly",
+        "Ask the teacher to mediate",
+        "Seal the notes until after exams"
+      ]
     },
     {
       "id": "anonymized_fee_matrix",
       "title": "匿名两列表",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "flags?[public_fee_verification]|flags?[teacher_boundary_guardrail]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics"],
-      "effects": {"INT": 1, "SPR": -1},
-      "set_flags": ["anonymized_fee_matrix"],
-      "evidence": {
-        "fee_difference_matrix": {
-          "claim": "An anonymized two-column comparison suggests a fee difference worth formal clarification.",
-          "status": "anonymized_summary",
-          "holders": ["self"],
-          "risk": "medium"
-        }
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
-      "pressure_clocks": {
-        "evidence_gap": {"delta": -1, "limit": 5, "meaning": "公开证据缺口"},
-        "administrative_attention": {"delta": 1, "limit": 4, "meaning": "学校行政关注风险"},
-        "burnout_risk": {"delta": 1, "limit": 4, "meaning": "考季透支风险"}
-      },
+      "set_flags": [
+        "anonymized_fee_matrix"
+      ],
       "narrative_seed": "The student turns scattered notes into an anonymized matrix: useful enough to ask a question, risky enough to require restraint.",
-      "choices": ["Give the packet to the teacher", "Ask class committee for a formal notice", "Stop for one night and study"]
+      "choices": [
+        "Give the packet to the teacher",
+        "Ask class committee for a formal notice",
+        "Stop for one night and study"
+      ]
     },
     {
       "id": "teacher_mediation_request",
       "title": "请老师代问",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[anonymized_fee_matrix]&flags?[teacher_boundary_guardrail]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics", "mentor", "school"],
-      "effects": {"WIL": 1, "SPR": 1},
-      "set_flags": ["school_fee_mediated"],
-      "close_threads": ["school_fee_pressure", "administrative_attention", "evidence_boundary"],
-      "open_threads": ["school_fee_followup"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "takes the formal risk of asking on the student's behalf"},
-        "school_admin": {"delta": -1, "note": "notices the question but receives it through an adult channel"}
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics",
+        "mentor",
+        "school"
+      ],
+      "effects": {
+        "SPR": 1
       },
-      "evidence": {
-        "mediation_packet": {
-          "claim": "The anonymized packet was handed to a trusted teacher for formal clarification.",
-          "status": "handed_to_mediator",
-          "holders": ["self", "mentor_teacher"],
-          "risk": "medium"
-        }
-      },
-      "pressure_clocks": {
-        "administrative_attention": {"close": true},
-        "evidence_gap": {"close": true},
-        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
-      },
+      "set_flags": [
+        "school_fee_mediated",
+        "school_fee_followup"
+      ],
       "narrative_seed": "The student chooses an adult channel: not public victory, but a cleaner chain of custody and less direct exposure.",
-      "choices": ["Wait for the teacher's reply", "Return attention to exams", "Tell family only the safe outline"]
+      "choices": [
+        "Wait for the teacher's reply",
+        "Return attention to exams",
+        "Tell family only the safe outline"
+      ],
+      "clear_flags": [
+        "school_fee_pressure",
+        "administrative_attention",
+        "evidence_boundary"
+      ]
     },
     {
       "id": "school_fee_followup_result",
       "title": "代问后的回音",
-      "age_range": [15, 18],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        18
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "flags?[school_fee_mediated]",
-      "age_advance": "none",
-      "tags": ["education", "investigation", "evidence", "ethics", "school", "resolution"],
-      "effects": {"SPR": 1},
-      "set_flags": ["school_fee_followup_result"],
-      "close_threads": ["school_fee_followup"],
-      "open_threads": ["exam_focus_recovery"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "returns with a bounded clarification and protects the student's role"},
-        "school_admin": {"delta": 1, "note": "offers a limited correction without inviting public escalation"}
+      "tags": [
+        "education",
+        "investigation",
+        "evidence",
+        "ethics",
+        "school",
+        "resolution"
+      ],
+      "effects": {
+        "SPR": 1
       },
-      "evidence": {
-        "fee_clarification_result": {
-          "claim": "A limited fee clarification or correction was relayed through the teacher after the anonymized packet.",
-          "status": "partial_clarification",
-          "holders": ["self", "mentor_teacher"],
-          "risk": "low"
-        }
-      },
-      "pressure_clocks": {
-        "burnout_risk": {"delta": -1, "limit": 4, "meaning": "考季透支风险"}
-      },
+      "set_flags": [
+        "school_fee_followup_result",
+        "exam_focus_recovery"
+      ],
       "narrative_seed": "The reply is modest, not triumphant: enough to cool the risk, record what changed, and return the student to the exam week.",
-      "choices": ["Return to exam focus", "Keep the clarification private", "Ask what can be safely checked later"]
+      "choices": [
+        "Return to exam focus",
+        "Keep the clarification private",
+        "Ask what can be safely checked later"
+      ],
+      "clear_flags": [
+        "school_fee_followup"
+      ]
     },
     {
       "id": "school_computer_room_access",
       "title": "机房边角时间",
-      "age_range": [13, 18],
-      "realm": "human_world",
+      "age_range": [
+        13,
+        18
+      ],
       "weight": 7,
       "repeatable": false,
       "include": "flags?[teacher_noticed]&INT>=7",
-      "tags": ["education", "technology", "mentor"],
-      "effects": {"INT": 1, "SPR": 1},
-      "set_flags": ["authorized_lab_time"],
-      "close_threads": ["computer_curiosity"],
-      "open_threads": ["computer_access"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "offers supervised access in exchange for discipline"}
+      "tags": [
+        "education",
+        "technology",
+        "mentor"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": 1
       },
-      "pressure_clocks": {
-        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"},
-        "secrecy_risk": {"delta": -1, "limit": 4, "meaning": "秘密行动被发现的风险"}
-      },
+      "set_flags": [
+        "authorized_lab_time",
+        "computer_access"
+      ],
       "narrative_seed": "A teacher turns curiosity into a narrow but legitimate opening toward computers.",
-      "choices": ["Use the lab time carefully", "Ask for harder computer books", "Trade chores for more access"]
+      "choices": [
+        "Use the lab time carefully",
+        "Ask for harder computer books",
+        "Trade chores for more access"
+      ],
+      "clear_flags": [
+        "computer_curiosity"
+      ]
     },
     {
       "id": "lab_chore_routine",
       "title": "机房杂活",
-      "age_range": [13, 18],
-      "realm": "human_world",
+      "age_range": [
+        13,
+        18
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[authorized_lab_time]",
-      "tags": ["education", "technology", "mentor", "work"],
-      "effects": {"INT": 1, "WIL": 1, "SPR": -1},
-      "set_flags": ["lab_chore_routine"],
-      "open_threads": ["computer_practice_routine"],
-      "relationships": {
-        "mentor_teacher": {"delta": 1, "note": "allows extra edge time because the chores are done reliably"}
+      "tags": [
+        "education",
+        "technology",
+        "mentor",
+        "work"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
-      "evidence": {
-        "lab_permission": {
-          "claim": "Supervised computer-room edge time is allowed in exchange for routine chores.",
-          "status": "witnessed_permission",
-          "holders": ["self", "mentor_teacher"],
-          "risk": "low"
-        }
-      },
+      "set_flags": [
+        "lab_chore_routine",
+        "computer_practice_routine"
+      ],
       "narrative_seed": "Extra access is not granted dramatically; it is earned through chalk dust, keys, and staying after everyone leaves.",
-      "choices": ["Keep the routine sustainable", "Ask for a harder technical task", "Protect exam time from the routine"]
+      "choices": [
+        "Keep the routine sustainable",
+        "Ask for a harder technical task",
+        "Protect exam time from the routine"
+      ]
     },
     {
       "id": "secret_part_time",
       "title": "偷偷打工",
-      "age_range": [14, 22],
-      "realm": "human_world",
+      "age_range": [
+        14,
+        22
+      ],
       "weight": 8,
       "repeatable": false,
-      "tags": ["work", "money", "secret", "technology"],
-      "effects": {"MNY": 1, "SPR": -1, "WIL": 1},
-      "set_flags": ["secret_part_time_job"],
-      "open_threads": ["money_vs_study"],
-      "pressure_clocks": {
-        "secrecy_risk": {"delta": 1, "limit": 4, "meaning": "秘密行动被发现的风险"}
+      "tags": [
+        "work",
+        "money",
+        "secret",
+        "technology"
+      ],
+      "effects": {
+        "MNY": 1,
+        "SPR": -1
       },
+      "set_flags": [
+        "secret_part_time_job",
+        "money_vs_study"
+      ],
       "narrative_seed": "The character trades rest for money and learns the price of secrecy.",
-      "choices": ["Keep earning quietly", "Tell family the truth", "Use the money for a tool or opportunity"]
+      "choices": [
+        "Keep earning quietly",
+        "Tell family the truth",
+        "Use the money for a tool or opportunity"
+      ]
     },
     {
       "id": "parent_discovers_secret_job",
       "title": "秘密差点穿帮",
-      "age_range": [14, 18],
-      "realm": "human_world",
+      "age_range": [
+        14,
+        18
+      ],
       "weight": 6,
       "repeatable": false,
       "include": "flags?[secret_part_time_job]",
-      "tags": ["family", "secret", "money"],
-      "effects": {"SPR": -1, "WIL": 1},
-      "set_flags": ["family_suspects_secret_work"],
-      "relationships": {
-        "family": {"delta": -1, "note": "notices fatigue and suspects hidden pressure"}
+      "tags": [
+        "family",
+        "secret",
+        "money"
+      ],
+      "effects": {
+        "SPR": -1
       },
-      "pressure_clocks": {
-        "secrecy_risk": {"delta": 1, "limit": 4, "meaning": "秘密行动被发现的风险"}
-      },
+      "set_flags": [
+        "family_suspects_secret_work"
+      ],
       "narrative_seed": "The family notices the cost before they understand the reason.",
-      "choices": ["Tell a partial truth", "Double down on secrecy", "Ask a teacher to mediate"]
+      "choices": [
+        "Tell a partial truth",
+        "Double down on secrecy",
+        "Ask a teacher to mediate"
+      ]
     },
     {
       "id": "family_budget_conversation",
       "title": "家里的账本",
-      "age_range": [14, 18],
-      "realm": "human_world",
+      "age_range": [
+        14,
+        18
+      ],
       "weight": 7,
       "repeatable": false,
       "include": "flags?[family_suspects_secret_work]|flags?[secret_part_time_job]",
-      "tags": ["family", "money", "honesty", "relationship"],
-      "effects": {"SPR": 1, "WIL": 1},
-      "set_flags": ["family_budget_conversation"],
-      "clear_flags": ["family_suspects_secret_work"],
-      "open_threads": ["family_budget_contract"],
-      "relationships": {
-        "family": {"delta": 1, "note": "still worried, but now understands part of the plan"}
+      "tags": [
+        "family",
+        "money",
+        "honesty",
+        "relationship"
+      ],
+      "effects": {
+        "SPR": 1
       },
-      "pressure_clocks": {
-        "secrecy_risk": {"delta": -2, "limit": 4, "meaning": "秘密行动被发现的风险"},
-        "family_debt": {"delta": 1, "limit": 5, "meaning": "家里经济余地变窄"}
-      },
+      "set_flags": [
+        "family_budget_conversation",
+        "family_budget_contract"
+      ],
+      "clear_flags": [
+        "family_suspects_secret_work"
+      ],
       "narrative_seed": "A half-truth becomes a family budget conversation: not full peace, but a shared ledger replaces pure suspicion.",
-      "choices": ["Follow the agreed budget", "Ask for one study expense", "Repair trust before asking more"]
+      "choices": [
+        "Follow the agreed budget",
+        "Ask for one study expense",
+        "Repair trust before asking more"
+      ]
     },
     {
       "id": "computer_shop_barter",
       "title": "电脑店打杂",
-      "age_range": [14, 18],
-      "realm": "human_world",
+      "age_range": [
+        14,
+        18
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[authorized_lab_time]|flags?[secret_part_time_job]|flags?[computer_access]",
-      "tags": ["technology", "work", "money", "relationship"],
-      "effects": {"INT": 1, "WIL": 1, "SPR": -1},
-      "set_flags": ["computer_shop_barter"],
-      "open_threads": ["computer_shop_access", "money_vs_study"],
-      "relationships": {
-        "shop_owner": {"delta": 1, "note": "offers small repair chores and occasional machine access"}
+      "tags": [
+        "technology",
+        "work",
+        "money",
+        "relationship"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
-      "evidence": {
-        "shop_access_promise": {
-          "claim": "The shop owner may trade repair chores for limited computer access.",
-          "status": "informal_promise",
-          "holders": ["self", "shop_owner"],
-          "risk": "medium"
-        }
-      },
+      "set_flags": [
+        "computer_shop_barter",
+        "computer_shop_access",
+        "money_vs_study"
+      ],
       "narrative_seed": "A repair counter becomes a second classroom, paid for with errands, dust, and care around adult expectations.",
-      "choices": ["Keep the shop tie modest", "Push for more machine time", "Tell family before it looks like secrecy"]
+      "choices": [
+        "Keep the shop tie modest",
+        "Push for more machine time",
+        "Tell family before it looks like secrecy"
+      ]
     },
     {
       "id": "used_computer_opportunity",
       "title": "二手电脑机会",
-      "age_range": [14, 22],
-      "realm": "human_world",
+      "age_range": [
+        14,
+        22
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[secret_part_time_job]|flags?[authorized_lab_time]|MNY>=4",
-      "tags": ["technology", "money", "choice"],
-      "effects": {"MNY": -1, "INT": 1, "SPR": 1},
-      "set_flags": ["used_computer_opportunity"],
-      "close_threads": ["computer_access", "computer_curiosity"],
-      "open_threads": ["computer_path"],
+      "tags": [
+        "technology",
+        "money",
+        "choice"
+      ],
+      "effects": {
+        "MNY": -1,
+        "INT": 1,
+        "SPR": 1
+      },
+      "set_flags": [
+        "used_computer_opportunity",
+        "computer_path"
+      ],
       "narrative_seed": "A used machine or shared computer becomes possible, but the price is not only money.",
-      "choices": ["Spend the saved money", "Ask for help openly", "Wait and keep practicing elsewhere"]
+      "choices": [
+        "Spend the saved money",
+        "Ask for help openly",
+        "Wait and keep practicing elsewhere"
+      ],
+      "clear_flags": [
+        "computer_access",
+        "computer_curiosity"
+      ]
     },
     {
       "id": "family_computer_schedule_contract",
       "title": "家里的用机约定",
-      "age_range": [15, 19],
-      "realm": "human_world",
+      "age_range": [
+        15,
+        19
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[used_computer_opportunity]",
-      "tags": ["technology", "family", "discipline", "relationship"],
-      "effects": {"SPR": 1, "WIL": 1},
-      "set_flags": ["computer_schedule_contract"],
-      "close_threads": ["computer_shop_access"],
-      "open_threads": ["computer_path"],
-      "relationships": {
-        "family": {"delta": 1, "note": "accepts computer use as long as study and rest stay visible"}
+      "tags": [
+        "technology",
+        "family",
+        "discipline",
+        "relationship"
+      ],
+      "effects": {
+        "SPR": 1
       },
-      "pressure_clocks": {
-        "secrecy_risk": {"close": true}
-      },
+      "set_flags": [
+        "computer_schedule_contract",
+        "computer_path"
+      ],
       "narrative_seed": "The machine stops being a secret object and becomes a negotiated household risk.",
-      "choices": ["Honor the schedule", "Use late-night time and risk trust", "Show family a useful result"]
+      "choices": [
+        "Honor the schedule",
+        "Use late-night time and risk trust",
+        "Show family a useful result"
+      ],
+      "clear_flags": [
+        "computer_shop_access"
+      ]
     },
     {
       "id": "exam_crossroads",
       "title": "升学关口",
-      "age_range": [16, 19],
-      "realm": "human_world",
+      "age_range": [
+        16,
+        19
+      ],
       "weight": 14,
       "repeatable": false,
       "include": "flags?[teacher_noticed]|INT>=7",
-      "tags": ["education", "choice", "family"],
-      "effects": {"INT": 1, "SPR": -1},
-      "set_flags": ["exam_pressure"],
-      "open_threads": ["leave_or_stay"],
-      "pressure_clocks": {
-        "exam_deadline": {"delta": 1, "limit": 4, "meaning": "升学压力逐步逼近"}
+      "tags": [
+        "education",
+        "choice",
+        "family"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": -1
       },
+      "set_flags": [
+        "exam_pressure",
+        "leave_or_stay"
+      ],
       "narrative_seed": "Exams turn private talent into public pressure.",
-      "choices": ["Bet everything on school", "Balance study and earning money", "Choose a practical trade"]
+      "choices": [
+        "Bet everything on school",
+        "Balance study and earning money",
+        "Choose a practical trade"
+      ]
     },
     {
       "id": "admission_notice_transition",
       "title": "录取通知",
-      "age_range": [17, 20],
-      "realm": "human_world",
+      "age_range": [
+        17,
+        20
+      ],
       "weight": 8,
       "repeatable": false,
       "include": "EVT?[exam_crossroads]&INT>=7",
-      "tags": ["education", "admission", "scholarship", "family", "city"],
-      "effects": {"INT": 1, "SPR": 1, "MNY": -1},
-      "set_flags": ["admission_notice", "funded_city_study_track"],
-      "close_threads": ["exam_path", "leave_or_stay"],
-      "open_threads": ["city_life", "family_promise", "computer_path"],
-      "relationships": {
-        "family": {"delta": 1, "note": "turns worry into a promise about study, money, and returning home"},
-        "mentor_teacher": {"delta": 1, "note": "helps interpret the notice and funding path"}
+      "tags": [
+        "education",
+        "admission",
+        "scholarship",
+        "family",
+        "city"
+      ],
+      "effects": {
+        "INT": 1,
+        "SPR": 1,
+        "MNY": -1
       },
-      "pressure_clocks": {
-        "exam_deadline": {"close": true}
-      },
-      "evidence": {
-        "admission_notice": {
-          "claim": "A city school or funded study track is now available after the exam.",
-          "status": "official_notice",
-          "holders": ["self", "family", "mentor_teacher"],
-          "risk": "low"
-        }
-      },
+      "set_flags": [
+        "admission_notice",
+        "funded_city_study_track",
+        "city_life",
+        "family_promise",
+        "computer_path"
+      ],
       "narrative_seed": "The notice does not erase poverty; it turns it into a new route with signatures, promises, and a train ticket.",
-      "choices": ["Accept the funded city path", "Choose a local practical path", "Negotiate a family support promise"]
+      "choices": [
+        "Accept the funded city path",
+        "Choose a local practical path",
+        "Negotiate a family support promise"
+      ],
+      "clear_flags": [
+        "exam_path",
+        "leave_or_stay"
+      ]
     },
     {
       "id": "city_arrival",
       "title": "离乡进城",
-      "age_range": [18, 26],
-      "realm": "human_world",
+      "age_range": [
+        18,
+        26
+      ],
       "weight": 10,
       "repeatable": false,
       "include": "INT>=6|MNY>=5",
-      "tags": ["city", "career", "loneliness"],
-      "effects": {"MNY": -1, "INT": 1, "SPR": -1},
-      "set_flags": ["left_hometown"],
-      "close_threads": ["leave_or_stay"],
-      "open_threads": ["city_life"],
+      "tags": [
+        "city",
+        "career",
+        "loneliness"
+      ],
+      "effects": {
+        "MNY": -1,
+        "INT": 1,
+        "SPR": -1
+      },
+      "set_flags": [
+        "left_hometown",
+        "city_life"
+      ],
       "narrative_seed": "Leaving home creates a wider map and a sharper loneliness.",
-      "choices": ["Build a career path", "Find allies", "Send money home"]
+      "choices": [
+        "Build a career path",
+        "Find allies",
+        "Send money home"
+      ],
+      "clear_flags": [
+        "leave_or_stay"
+      ]
     },
     {
       "id": "small_success",
       "title": "小有成就",
-      "age_range": [24, 40],
-      "realm": "human_world",
+      "age_range": [
+        24,
+        40
+      ],
       "weight": 9,
       "repeatable": false,
-      "include": "WIL>=6&INT>=6",
-      "tags": ["career", "achievement"],
-      "effects": {"MNY": 2, "SPR": 1},
-      "set_flags": ["small_success"],
-      "close_threads": ["money_vs_study"],
+      "include": "SPR>=6&INT>=6",
+      "tags": [
+        "career",
+        "achievement"
+      ],
+      "effects": {
+        "MNY": 2,
+        "SPR": 1
+      },
+      "set_flags": [
+        "small_success"
+      ],
       "narrative_seed": "Years of pressure finally turn into a visible result.",
-      "choices": ["Stabilize the gains", "Take a larger risk", "Repair neglected relationships"]
+      "choices": [
+        "Stabilize the gains",
+        "Take a larger risk",
+        "Repair neglected relationships"
+      ],
+      "clear_flags": [
+        "money_vs_study"
+      ]
     },
     {
       "id": "relationship_reckoning",
       "title": "关系清算",
-      "age_range": [28, 55],
-      "realm": "human_world",
+      "age_range": [
+        28,
+        55
+      ],
       "weight": 8,
       "repeatable": false,
-      "tags": ["relationship", "family", "regret"],
-      "effects": {"SPR": -1, "WIL": 1},
-      "set_flags": ["relationship_reckoning"],
-      "relationships": {
-        "family": {"delta": -1, "note": "an old emotional debt becomes harder to ignore"}
+      "tags": [
+        "relationship",
+        "family",
+        "regret"
+      ],
+      "effects": {
+        "SPR": -1
       },
+      "set_flags": [
+        "relationship_reckoning"
+      ],
       "narrative_seed": "A relationship asks for payment on an old emotional debt.",
-      "choices": ["Apologize honestly", "Keep distance", "Choose ambition over repair"]
+      "choices": [
+        "Apologize honestly",
+        "Keep distance",
+        "Choose ambition over repair"
+      ]
     },
     {
       "id": "family_repair_visit",
       "title": "归家修补",
-      "age_range": [30, 70],
-      "realm": "human_world",
+      "age_range": [
+        30,
+        70
+      ],
       "weight": 5,
       "repeatable": false,
       "include": "flags?[relationship_reckoning]",
-      "tags": ["relationship", "family", "repair", "regret"],
-      "effects": {"SPR": 1},
-      "set_flags": ["family_repair_attempt"],
-      "open_threads": ["family_care_promise"],
-      "relationships": {
-        "family": {"delta": 1, "note": "hears a real apology and watches whether it becomes repeated care"}
+      "tags": [
+        "relationship",
+        "family",
+        "repair",
+        "regret"
+      ],
+      "effects": {
+        "SPR": 1
       },
+      "set_flags": [
+        "family_repair_attempt",
+        "family_care_promise"
+      ],
       "narrative_seed": "Repair does not erase the years away; it begins with a visit, an apology, and a practical promise that can be kept.",
-      "choices": ["Keep returning steadily", "Offer practical support", "Admit the old ambition still pulls"]
+      "choices": [
+        "Keep returning steadily",
+        "Offer practical support",
+        "Admit the old ambition still pulls"
+      ]
     },
     {
       "id": "wandering_adept_rumor",
       "title": "游方传闻",
-      "age_range": [13, 29],
-      "realm": "human_world",
+      "age_range": [
+        13,
+        29
+      ],
       "weight": 4,
       "repeatable": false,
       "include": "flags?[latent_cultivation]|TLT?[root_of_cultivation]",
-      "tags": ["cultivation", "mystery", "choice"],
-      "effects": {"LUK": 1, "WIL": 1, "SPR": -1},
-      "set_flags": ["heard_adept_rumor"],
-      "open_threads": ["search_for_manual"],
+      "tags": [
+        "cultivation",
+        "mystery",
+        "choice"
+      ],
+      "effects": {
+        "LUK": 1,
+        "SPR": -1
+      },
+      "set_flags": [
+        "heard_adept_rumor",
+        "search_for_manual"
+      ],
       "narrative_seed": "A rumor suggests the childhood sign may belong to a wider, stranger order of the world.",
-      "choices": ["Follow the rumor quietly", "Dismiss it and return to ordinary life", "Ask someone older what they know"]
+      "choices": [
+        "Follow the rumor quietly",
+        "Dismiss it and return to ordinary life",
+        "Ask someone older what they know"
+      ]
     },
     {
       "id": "hidden_manual",
       "title": "异书入梦",
-      "age_range": [30, 80],
-      "realm": "human_world",
+      "age_range": [
+        30,
+        80
+      ],
       "weight": 3,
       "repeatable": false,
       "include": "TLT?[root_of_cultivation]|LUK>=8|flags?[heard_adept_rumor]",
-      "tags": ["cultivation", "mystery", "longevity"],
-      "effects": {"INT": 2, "STR": 1, "SPR": 1},
-      "set_flags": ["found_hidden_manual"],
-      "close_threads": ["search_for_manual"],
-      "open_threads": ["ascension_threshold"],
-      "life_cap": 500,
-      "existence_state": "cultivator",
+      "tags": [
+        "cultivation",
+        "mystery",
+        "longevity"
+      ],
+      "effects": {
+        "INT": 2,
+        "STR": 1,
+        "SPR": 1
+      },
+      "set_flags": [
+        "found_hidden_manual",
+        "ascension_threshold",
+        "life_extended",
+        "existence_cultivator"
+      ],
       "narrative_seed": "An impossible text appears at the edge of ordinary life and changes the scale of time.",
-      "choices": ["Practice in secret", "Treat it as a hallucination", "Search for others who know"]
+      "choices": [
+        "Practice in secret",
+        "Treat it as a hallucination",
+        "Search for others who know"
+      ],
+      "clear_flags": [
+        "search_for_manual"
+      ]
     },
     {
       "id": "cultivation_bottleneck",
       "title": "百岁瓶颈",
-      "age_range": [90, 300],
-      "realm": "human_world",
+      "age_range": [
+        90,
+        300
+      ],
       "weight": 6,
       "repeatable": true,
-      "include": "existence_state=cultivator&flags?[found_hidden_manual]",
-      "tags": ["cultivation", "longevity", "risk"],
-      "effects": {"WIL": 1, "SPR": -1},
-      "open_threads": ["ascension_threshold"],
-      "pressure_clocks": {
-        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      "include": "flags?[existence_cultivator]&flags?[found_hidden_manual]",
+      "tags": [
+        "cultivation",
+        "longevity",
+        "risk"
+      ],
+      "effects": {
+        "SPR": -1
       },
       "narrative_seed": "Long life stops feeling like escape and starts feeling like a test of direction.",
-      "choices": ["Endure the bottleneck", "Seek a dangerous breakthrough", "Return to old human ties"]
+      "choices": [
+        "Endure the bottleneck",
+        "Seek a dangerous breakthrough",
+        "Return to old human ties"
+      ],
+      "set_flags": [
+        "ascension_threshold"
+      ]
     },
     {
       "id": "decades_tempering_routine",
       "title": "数十年打磨",
-      "age_range": [80, 300],
-      "realm": "human_world",
+      "age_range": [
+        80,
+        300
+      ],
       "weight": 5,
       "repeatable": false,
-      "include": "existence_state=cultivator&flags?[found_hidden_manual]",
-      "tags": ["cultivation", "longevity", "discipline", "preparation"],
-      "effects": {"STR": 1, "SPR": -1},
-      "set_flags": ["tempering_routine"],
-      "open_threads": ["ascension_threshold"],
-      "pressure_clocks": {
-        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      "include": "flags?[existence_cultivator]&flags?[found_hidden_manual]",
+      "tags": [
+        "cultivation",
+        "longevity",
+        "discipline",
+        "preparation"
+      ],
+      "effects": {
+        "STR": 1,
+        "SPR": -1
       },
+      "set_flags": [
+        "tempering_routine",
+        "ascension_threshold"
+      ],
       "narrative_seed": "The first decades of practice are not spectacle but repeated restraint: diet, breath, recovery, and refusing shortcuts.",
-      "choices": ["Keep the slow routine", "Look for a safer teacher", "Risk a harder breakthrough"]
+      "choices": [
+        "Keep the slow routine",
+        "Look for a safer teacher",
+        "Risk a harder breakthrough"
+      ]
     },
     {
       "id": "breakthrough_preparation",
       "title": "破关前夜",
-      "age_range": [100, 500],
-      "realm": "human_world",
+      "age_range": [
+        100,
+        500
+      ],
       "weight": 4,
       "repeatable": false,
-      "include": "existence_state=cultivator&flags?[tempering_routine]",
-      "tags": ["cultivation", "ascension", "risk", "preparation"],
-      "effects": {"STR": 1, "WIL": 1, "SPR": -1},
-      "set_flags": ["breakthrough_prepared"],
-      "open_threads": ["ascension_threshold"],
-      "pressure_clocks": {
-        "cultivation_bottleneck": {"delta": 1, "limit": 4, "meaning": "修炼瓶颈逐步逼近"}
+      "include": "flags?[existence_cultivator]&flags?[tempering_routine]",
+      "tags": [
+        "cultivation",
+        "ascension",
+        "risk",
+        "preparation"
+      ],
+      "effects": {
+        "STR": 1,
+        "SPR": -1
       },
+      "set_flags": [
+        "breakthrough_prepared",
+        "ascension_threshold"
+      ],
       "narrative_seed": "A possible breakthrough approaches, but the preparation is practical: settle old ties, conserve strength, and decide what risk is acceptable.",
-      "choices": ["Wait for the right timing", "Seek outside help", "Force the gate and accept the cost"]
+      "choices": [
+        "Wait for the right timing",
+        "Seek outside help",
+        "Force the gate and accept the cost"
+      ]
     },
     {
       "id": "ascension_gate",
       "title": "飞升之门",
-      "age_range": [80, 500],
-      "realm": "human_world",
+      "age_range": [
+        80,
+        500
+      ],
       "weight": 4,
       "repeatable": false,
-      "include": "existence_state=cultivator&INT>=10&STR>=8&flags?[found_hidden_manual]",
-      "tags": ["cultivation", "ascension", "ending"],
-      "effects": {"SPR": 3},
-      "set_flags": ["ascended_from_human_world"],
-      "close_threads": ["family_origin", "latent_cultivation", "ascension_threshold", "cultivation_bottleneck"],
-      "open_threads": ["higher_realm_invitation"],
-      "pressure_clocks": {
-        "cultivation_bottleneck": {"close": true}
+      "include": "flags?[existence_cultivator]&INT>=10&STR>=8&flags?[found_hidden_manual]",
+      "tags": [
+        "cultivation",
+        "ascension",
+        "ending"
+      ],
+      "effects": {
+        "SPR": 3
       },
-      "existence_state": "ascended",
-      "realm_transition": "higher_realm",
+      "set_flags": [
+        "ascended_from_human_world",
+        "higher_realm_invitation",
+        "existence_ascended",
+        "realm_higher_realm"
+      ],
       "terminal": true,
       "terminal_reason": "The human-life arc ends in ascension.",
       "narrative_seed": "The character steps beyond the human world; the life can end here or continue in a higher realm.",
-      "choices": ["Summarize the human life", "Continue into the higher realm", "Choose one talent to inherit"]
+      "choices": [
+        "Summarize the human life",
+        "Continue into the higher realm",
+        "Choose one talent to inherit"
+      ],
+      "clear_flags": [
+        "family_origin",
+        "latent_cultivation",
+        "ascension_threshold",
+        "cultivation_bottleneck",
+        "existence_cultivator"
+      ],
+      "special_when": "flags?[found_hidden_manual]"
     },
     {
       "id": "higher_realm_start",
       "title": "上界初临",
-      "age_range": [80, 10000],
-      "realm": "higher_realm",
+      "age_range": [
+        80,
+        10000
+      ],
       "weight": 10,
       "repeatable": false,
-      "include": "existence_state=ascended&flags?[ascended_from_human_world]",
-      "age_advance": "none",
-      "tags": ["cultivation", "ascension", "higher_realm"],
-      "effects": {"WIL": 1, "SPR": 1},
-      "set_flags": ["higher_realm_arrival"],
-      "close_threads": ["higher_realm_invitation"],
-      "open_threads": ["higher_realm_identity"],
+      "include": "flags?[existence_ascended]&flags?[ascended_from_human_world]",
+      "tags": [
+        "cultivation",
+        "ascension",
+        "higher_realm"
+      ],
+      "effects": {
+        "SPR": 1
+      },
+      "set_flags": [
+        "higher_realm_arrival",
+        "higher_realm_identity",
+        "life_extended"
+      ],
       "clear_terminal": true,
-      "life_cap": 10000,
       "narrative_seed": "The old human arc is closed, but consciousness steadies into a new realm with unfamiliar laws.",
-      "choices": ["Learn the higher realm's rules", "Look back at the human inheritance", "Test the new body's limits"]
+      "choices": [
+        "Learn the higher realm's rules",
+        "Look back at the human inheritance",
+        "Test the new body's limits"
+      ],
+      "clear_flags": [
+        "higher_realm_invitation"
+      ],
+      "special_when": "flags?[ascended_from_human_world]"
     },
     {
       "id": "ordinary_old_age",
       "title": "寻常暮年",
-      "age_range": [70, 105],
-      "realm": "human_world",
+      "age_range": [
+        70,
+        105
+      ],
       "weight": 12,
       "repeatable": false,
-      "exclude": "existence_state=cultivator|existence_state=immortal",
-      "tags": ["old_age", "ending"],
-      "effects": {"STR": -1, "SPR": 1},
+      "exclude": "flags?[existence_cultivator]|flags?[existence_immortal]",
+      "tags": [
+        "old_age",
+        "ending"
+      ],
+      "effects": {
+        "STR": -1,
+        "SPR": 1
+      },
       "terminal": true,
       "terminal_reason": "The life closes in old age.",
       "narrative_seed": "The noise of ambition lowers, and the life asks what remains.",
-      "choices": ["Review achievements", "Name the chief regret", "Choose an inheritance"]
+      "choices": [
+        "Review achievements",
+        "Name the chief regret",
+        "Choose an inheritance"
+      ]
     }
   ],
   "age_pools": {
-    "0": [{"event_id": "birth_county", "weight": 20}],
-    "1-6": [{"event_id": "early_sickness", "weight": 6}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "preschool_self_management", "weight": 6}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "7-13": [{"event_id": "teacher_notice", "weight": 12}, {"event_id": "primary_school_routine", "weight": 6}, {"event_id": "playground_confidence", "weight": 5}, {"event_id": "steady_student_reputation", "weight": 7}, {"event_id": "childhood_observation", "weight": 7}, {"event_id": "screen_curiosity", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "childhood_spirit_sign", "weight": 5}],
-    "13-18": [{"event_id": "school_computer_room_access", "weight": 7}, {"event_id": "lab_chore_routine", "weight": 5}, {"event_id": "classmate_friendship", "weight": 4}, {"event_id": "anonymous_fee_notes", "weight": 4}, {"event_id": "public_fee_verification", "weight": 4}, {"event_id": "teacher_boundary_counsel", "weight": 5}, {"event_id": "anonymized_fee_matrix", "weight": 4}, {"event_id": "teacher_mediation_request", "weight": 5}, {"event_id": "school_fee_followup_result", "weight": 4}],
-    "14-22": [{"event_id": "secret_part_time", "weight": 8}, {"event_id": "parent_discovers_secret_job", "weight": 6}, {"event_id": "family_budget_conversation", "weight": 7}, {"event_id": "computer_shop_barter", "weight": 5}, {"event_id": "used_computer_opportunity", "weight": 5}, {"event_id": "family_computer_schedule_contract", "weight": 5}, {"event_id": "exam_crossroads", "weight": 14}],
-    "17-20": [{"event_id": "admission_notice_transition", "weight": 8}],
-    "18-26": [{"event_id": "city_arrival", "weight": 10}],
-    "24-40": [{"event_id": "small_success", "weight": 9}],
-    "28-55": [{"event_id": "relationship_reckoning", "weight": 8}, {"event_id": "family_repair_visit", "weight": 5}],
-    "13-29": [{"event_id": "wandering_adept_rumor", "weight": 4}],
-    "30-80": [{"event_id": "hidden_manual", "weight": 3}],
-    "90-300": [{"event_id": "cultivation_bottleneck", "weight": 6}, {"event_id": "decades_tempering_routine", "weight": 5}],
-    "80-500": [{"event_id": "breakthrough_preparation", "weight": 4}, {"event_id": "ascension_gate", "weight": 4}, {"event_id": "higher_realm_start", "weight": 10}],
-    "70-105": [{"event_id": "ordinary_old_age", "weight": 12}]
+    "0": [
+      {
+        "event_id": "birth_county",
+        "weight": 20
+      }
+    ],
+    "1-6": [
+      {
+        "event_id": "early_sickness",
+        "weight": 6
+      },
+      {
+        "event_id": "childhood_observation",
+        "weight": 7
+      },
+      {
+        "event_id": "preschool_self_management",
+        "weight": 6
+      },
+      {
+        "event_id": "screen_curiosity",
+        "weight": 5
+      },
+      {
+        "event_id": "childhood_spirit_sign",
+        "weight": 5
+      }
+    ],
+    "7-13": [
+      {
+        "event_id": "teacher_notice",
+        "weight": 12
+      },
+      {
+        "event_id": "primary_school_routine",
+        "weight": 6
+      },
+      {
+        "event_id": "playground_confidence",
+        "weight": 5
+      },
+      {
+        "event_id": "steady_student_reputation",
+        "weight": 7
+      },
+      {
+        "event_id": "childhood_observation",
+        "weight": 7
+      },
+      {
+        "event_id": "screen_curiosity",
+        "weight": 5
+      },
+      {
+        "event_id": "classmate_friendship",
+        "weight": 4
+      },
+      {
+        "event_id": "childhood_spirit_sign",
+        "weight": 5
+      }
+    ],
+    "13-18": [
+      {
+        "event_id": "school_computer_room_access",
+        "weight": 7
+      },
+      {
+        "event_id": "lab_chore_routine",
+        "weight": 5
+      },
+      {
+        "event_id": "classmate_friendship",
+        "weight": 4
+      },
+      {
+        "event_id": "anonymous_fee_notes",
+        "weight": 4
+      },
+      {
+        "event_id": "public_fee_verification",
+        "weight": 4
+      },
+      {
+        "event_id": "teacher_boundary_counsel",
+        "weight": 5
+      },
+      {
+        "event_id": "anonymized_fee_matrix",
+        "weight": 4
+      },
+      {
+        "event_id": "teacher_mediation_request",
+        "weight": 5
+      },
+      {
+        "event_id": "school_fee_followup_result",
+        "weight": 4
+      }
+    ],
+    "14-22": [
+      {
+        "event_id": "secret_part_time",
+        "weight": 8
+      },
+      {
+        "event_id": "parent_discovers_secret_job",
+        "weight": 6
+      },
+      {
+        "event_id": "family_budget_conversation",
+        "weight": 7
+      },
+      {
+        "event_id": "computer_shop_barter",
+        "weight": 5
+      },
+      {
+        "event_id": "used_computer_opportunity",
+        "weight": 5
+      },
+      {
+        "event_id": "family_computer_schedule_contract",
+        "weight": 5
+      },
+      {
+        "event_id": "exam_crossroads",
+        "weight": 14
+      }
+    ],
+    "17-20": [
+      {
+        "event_id": "admission_notice_transition",
+        "weight": 8
+      }
+    ],
+    "18-26": [
+      {
+        "event_id": "city_arrival",
+        "weight": 10
+      }
+    ],
+    "24-40": [
+      {
+        "event_id": "small_success",
+        "weight": 9
+      }
+    ],
+    "28-55": [
+      {
+        "event_id": "relationship_reckoning",
+        "weight": 8
+      },
+      {
+        "event_id": "family_repair_visit",
+        "weight": 5
+      }
+    ],
+    "13-29": [
+      {
+        "event_id": "wandering_adept_rumor",
+        "weight": 4
+      }
+    ],
+    "30-80": [
+      {
+        "event_id": "hidden_manual",
+        "weight": 3
+      }
+    ],
+    "90-300": [
+      {
+        "event_id": "cultivation_bottleneck",
+        "weight": 6
+      },
+      {
+        "event_id": "decades_tempering_routine",
+        "weight": 5
+      }
+    ],
+    "80-500": [
+      {
+        "event_id": "breakthrough_preparation",
+        "weight": 4
+      },
+      {
+        "event_id": "ascension_gate",
+        "weight": 4
+      },
+      {
+        "event_id": "higher_realm_start",
+        "weight": 10
+      }
+    ],
+    "70-105": [
+      {
+        "event_id": "ordinary_old_age",
+        "weight": 12
+      }
+    ]
   }
 }

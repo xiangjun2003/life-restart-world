@@ -1,139 +1,25 @@
 #!/usr/bin/env python3
-"""Validate a Life Restart World playtest transcript.
+"""Validate a lightweight Live Play playtest transcript.
 
-This is a diagnostic harness, not a game engine. It checks whether a recorded
-playtest contains enough evidence to prove that natural-language turns updated
-the protagonist ledger instead of only producing prose.
+This is a developer QA helper. It checks for story-first output, free-form
+action coverage, state snapshots that conform to LifeState v1, and exposed
+script/content-pack problems. It does not require a strict turn transcript.
 """
 
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR))
-
-import validate_state  # noqa: E402
+import validate_state
 
 
-VALID_KINDS = {"life_restart_world_playtest", "life_restart_playtest"}
-INTENT_SOURCES = {"entry", "modified_entry", "freeform", "implicit_default"}
-CUSTOM_INTENT_SOURCES = {"modified_entry", "freeform"}
-NO_PACK_PLACEHOLDERS = {"", "none", "no-pack", "no_pack", "custom", "manual"}
-NON_ADJUDICATING_PACK_POLICY_MODES = {"none", "reference"}
-VISIBLE_SNAPSHOT_KEYS = {
-    "age",
-    "time",
-    "realm",
-    "existence_state",
-    "attributes",
-    "relationships",
-    "pressure",
-    "pressure_clocks",
-    "threads",
-    "open_threads",
-    "evidence",
-    "terminal",
-    "summary",
-    "current",
-}
-DISPLAY_FIELD_ALIASES = {
-    "story_scene": ["scene", "narrative_scene", "narrative"],
-    "visible_delta": ["visible_changes", "change_summary", "player_delta"],
-    "visible_snapshot": ["current_snapshot", "player_snapshot", "snapshot"],
-    "visible_actions": ["action_entries", "player_actions", "choices"],
-    "freeform_reminder": ["free_action_reminder", "allows_freeform", "freeform_allowed"],
-}
-RAW_LEDGER_DISPLAY_KEYS = {
-    "event_history",
-    "last_delta",
-    "last_intent",
-    "next_affordances",
-    "pack_policy",
-    "phase_summaries",
-    "post_state",
-    "raw_state",
-    "rng_seed",
-    "session_id",
-    "state",
-    "timeline",
-    "version",
-    "world",
-}
-RAW_DELTA_DISPLAY_KEYS = RAW_LEDGER_DISPLAY_KEYS | {
-    "event_material",
-    "flags_added",
-    "flags_removed",
-    "intent_trace",
-    "threads_added",
-    "threads_closed",
-    "timeline_item",
-}
-RAW_ACTION_DISPLAY_KEYS = RAW_LEDGER_DISPLAY_KEYS | {
-    "checks",
-    "desired_outcome",
-    "intent",
-    "risk",
-    "selected_entry",
-    "state_hooks",
-    "tags",
-    "targets",
-}
-LOCKED_MENU_PATTERNS = [
-    "只能选择",
-    "只能选",
-    "必须选择",
-    "必须选",
-    "请从以下选项选择",
-    "从以下选项选择",
-    "从以上选项选择",
-    "回复编号",
-    "输入编号",
-    "输入数字",
-    "回复数字",
-    "choose only",
-    "choose one",
-    "must choose",
-    "select one",
-    "pick one",
-    "from the options",
-    "/select",
-]
-FREEFORM_REMINDER_PATTERNS = [
-    "也可以",
-    "直接说",
-    "自由行动",
-    "自由说",
-    "不必只选",
-    "可以自己",
-    "freeform",
-    "free-form",
-    "anything else",
-]
-DURABLE_DELTA_KEYS = {
-    "age",
-    "time",
-    "life_cap",
-    "existence_state",
-    "realm",
-    "terminal",
-    "terminal_reason",
-    "attributes",
-    "relationships",
-    "pressure_clocks",
-    "evidence",
-    "flags_added",
-    "flags_removed",
-    "threads_added",
-    "threads_closed",
-    "phase_summary",
-    "event_material",
-    "event_ids",
-    "timeline_item",
+ALIASES = {
+    "story_scene": ["story_scene", "scene", "prose", "narrative"],
+    "actions": ["actions", "action_openings", "visible_actions", "choices"],
+    "state": ["state", "post_state", "life_state"],
 }
 
 
@@ -149,1072 +35,245 @@ def load_transcript(value: str) -> dict[str, Any]:
     return json.loads(value)
 
 
-def is_real_content_pack(world: Any) -> bool:
-    if not isinstance(world, dict):
-        return False
-    content_pack = world.get("content_pack")
-    if not isinstance(content_pack, str):
-        return False
-    return content_pack.strip().lower() not in NO_PACK_PLACEHOLDERS
+def first_field(obj: dict[str, Any], names: list[str]) -> Any:
+    for name in names:
+        if name in obj:
+            return obj[name]
+    return None
 
 
-def pack_policy_mode(world: Any) -> str | None:
-    if not isinstance(world, dict):
-        return None
-    policy = world.get("pack_policy")
-    if not isinstance(policy, dict):
-        return None
-    mode = policy.get("mode")
-    return mode if isinstance(mode, str) else None
-
-
-def as_list(value: Any) -> list[Any]:
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
-
-
-def split_event_id(value: Any) -> set[str]:
-    event_ids: set[str] = set()
-    for item in as_list(value):
-        for part in str(item).split("+"):
-            event_id = part.strip()
-            if event_id:
-                event_ids.add(event_id)
-    return event_ids
-
-
-def event_ids_from_state(state: Any) -> set[str]:
-    if not isinstance(state, dict):
-        return set()
-    event_ids: set[str] = set()
-    history = state.get("event_history")
-    if isinstance(history, list):
-        event_ids.update(str(item) for item in history if isinstance(item, str))
-    timeline = state.get("timeline")
-    if isinstance(timeline, list):
-        for item in timeline:
-            if isinstance(item, dict):
-                event_ids.update(split_event_id(item.get("event_id")))
-    return event_ids
-
-
-def event_ids_from_turn(turn: dict[str, Any]) -> set[str]:
-    event_ids: set[str] = set()
-    for key in ["event_id", "event_ids", "event_material"]:
-        event_ids.update(split_event_id(turn.get(key)))
-    delta = turn.get("delta")
-    if isinstance(delta, dict):
-        event_ids.update(split_event_id(delta.get("event_material")))
-        item = delta.get("timeline_item")
-        if isinstance(item, dict):
-            event_ids.update(split_event_id(item.get("event_id")))
-    timeline_item = turn.get("timeline_item")
-    if isinstance(timeline_item, dict):
-        event_ids.update(split_event_id(timeline_item.get("event_id")))
-    return event_ids
-
-
-def state_objects(transcript: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
-    states: list[tuple[str, dict[str, Any]]] = []
-    for key in ["initial_state", "mid_state", "final_state"]:
-        value = transcript.get(key)
-        if isinstance(value, dict):
-            states.append((key, value))
-    turns = transcript.get("turns")
-    if isinstance(turns, list):
-        for index, turn in enumerate(turns):
-            if not isinstance(turn, dict):
-                continue
-            for key in ["state", "post_state"]:
-                value = turn.get(key)
-                if isinstance(value, dict):
-                    states.append((f"turns[{index}].{key}", value))
-    return states
-
-
-def state_has_affordances(state: dict[str, Any]) -> bool:
-    affordances = state.get("next_affordances")
-    return isinstance(affordances, list) and bool(affordances)
-
-
-def turn_has_affordances(turn: dict[str, Any]) -> bool:
-    affordances = turn.get("next_affordances")
-    if isinstance(affordances, list) and affordances:
-        return True
-    for key in ["state", "post_state"]:
-        state = turn.get(key)
-        if isinstance(state, dict) and state_has_affordances(state):
-            return True
-    return False
-
-
-def display_field(turn: dict[str, Any], canonical_key: str) -> tuple[str | None, Any]:
-    for key in [canonical_key, *DISPLAY_FIELD_ALIASES.get(canonical_key, [])]:
-        value = turn.get(key)
-        if value is not None:
-            return key, value
-    return None, None
-
-
-def turn_visible_snapshot(turn: dict[str, Any]) -> Any:
-    return display_field(turn, "visible_snapshot")[1]
-
-
-def turn_story_scene(turn: dict[str, Any]) -> Any:
-    return display_field(turn, "story_scene")[1]
-
-
-def turn_visible_delta(turn: dict[str, Any]) -> Any:
-    return display_field(turn, "visible_delta")[1]
-
-
-def turn_visible_actions(turn: dict[str, Any]) -> Any:
-    return display_field(turn, "visible_actions")[1]
-
-
-def turn_freeform_reminder(turn: dict[str, Any]) -> Any:
-    return display_field(turn, "freeform_reminder")[1]
-
-
-def collect_nested_keys(value: Any) -> set[str]:
-    keys: set[str] = set()
-    if isinstance(value, dict):
-        for key, item in value.items():
-            keys.add(str(key))
-            keys.update(collect_nested_keys(item))
-    elif isinstance(value, list):
-        for item in value:
-            keys.update(collect_nested_keys(item))
-    return keys
-
-
-def raw_key_markers_in_text(value: Any, raw_keys: set[str]) -> set[str]:
-    if isinstance(value, str):
-        markers = set()
-        for key in raw_keys:
-            escaped = re.escape(key)
-            if f'"{key}"' in value or f"'{key}'" in value:
-                markers.add(key)
-            elif "_" in key and re.search(rf"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])", value):
-                markers.add(key)
-            elif re.search(rf"(?<![A-Za-z0-9_]){escaped}\s*[:=]", value):
-                markers.add(key)
-        return markers
-    keys: set[str] = set()
-    if isinstance(value, dict):
-        for item in value.values():
-            keys.update(raw_key_markers_in_text(item, raw_keys))
-    elif isinstance(value, list):
-        for item in value:
-            keys.update(raw_key_markers_in_text(item, raw_keys))
-    return keys
-
-
-def check_display_alias(turn: dict[str, Any], canonical_key: str, index: int, warnings: list[str]) -> None:
-    key, _ = display_field(turn, canonical_key)
-    if key is not None and key != canonical_key:
-        warnings.append(f"turns[{index}].{key} is accepted as a compatibility alias; prefer canonical {canonical_key}")
-
-
-def check_no_rawish_display_field(field_name: str, value: Any, index: int, raw_keys: set[str], warnings: list[str]) -> None:
-    nested = collect_nested_keys(value)
-    overlap = sorted(nested & raw_keys)
-    if overlap:
-        warnings.append(f"turns[{index}].{field_name} looks like raw ledger/debug data; remove internal keys: {overlap}")
-    text_overlap = sorted(raw_key_markers_in_text(value, raw_keys))
-    if text_overlap:
-        warnings.append(f"turns[{index}].{field_name} appears to quote raw ledger keys: {text_overlap}")
-
-
-def has_rawish_display_markers(value: Any, raw_keys: set[str]) -> bool:
-    return bool(collect_nested_keys(value) & raw_keys) or bool(raw_key_markers_in_text(value, raw_keys))
-
-
-def has_textish_content(value: Any) -> bool:
+def has_text(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     if isinstance(value, list):
-        return any(has_textish_content(item) for item in value)
+        return any(has_text(item) for item in value)
     if isinstance(value, dict):
-        return any(item not in (None, "", [], {}) for item in value.values())
-    return False
+        return any(has_text(item) for item in value.values())
+    return value is not None
 
 
-def textish_length(value: Any) -> int:
-    if isinstance(value, str):
-        return len(value.strip())
-    if isinstance(value, list):
-        return sum(textish_length(item) for item in value)
-    if isinstance(value, dict):
-        return sum(textish_length(item) for item in value.values())
-    return 0
-
-
-def has_story_scene(turn: dict[str, Any]) -> bool:
-    return has_textish_content(turn_story_scene(turn))
-
-
-def has_visible_delta(turn: dict[str, Any]) -> bool:
-    return has_textish_content(turn_visible_delta(turn))
-
-
-def action_label(value: Any) -> str:
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, dict):
-        for key in ["label", "text", "action", "title"]:
-            item = value.get(key)
-            if isinstance(item, str) and item.strip():
-                return item.strip()
-    return ""
-
-
-def visible_action_labels(turn: dict[str, Any]) -> list[str]:
-    actions = turn_visible_actions(turn)
-    if not isinstance(actions, list):
-        return []
-    return [label for label in (action_label(item) for item in actions) if label]
-
-
-def has_visible_actions(turn: dict[str, Any]) -> bool:
-    labels = visible_action_labels(turn)
-    return 2 <= len(labels) <= 4
-
-
-def has_clean_visible_actions(turn: dict[str, Any]) -> bool:
-    actions = turn_visible_actions(turn)
-    if not isinstance(actions, list):
-        return False
-    labels = visible_action_labels(turn)
-    if not (2 <= len(labels) <= 4):
-        return False
-    if len(labels) != len(actions):
-        return False
-    if len(set(labels)) != len(labels):
-        return False
-    if has_locked_menu_language(actions):
-        return False
-    if has_freeform_reminder_language(labels):
-        return False
-    if has_rawish_display_markers(actions, RAW_ACTION_DISPLAY_KEYS):
-        return False
-    return True
-
-
-def has_freeform_reminder_evidence(turn: dict[str, Any]) -> bool:
-    reminder = turn_freeform_reminder(turn)
-    if reminder is True:
-        return True
-    if has_textish_content(reminder):
-        return True
-    actions = turn_visible_actions(turn)
-    text = ""
-    if isinstance(actions, list):
-        text = "\n".join(action_label(item) for item in actions)
-    elif isinstance(actions, str):
-        text = actions
-    return any(pattern.lower() in text.lower() for pattern in FREEFORM_REMINDER_PATTERNS)
-
-
-def explicit_freeform_text(value: Any) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, list):
-        return "\n".join(explicit_freeform_text(item) for item in value)
-    if isinstance(value, dict):
-        return "\n".join(explicit_freeform_text(item) for item in value.values())
-    return ""
-
-
-def has_explicit_freeform_reminder(turn: dict[str, Any]) -> bool:
-    reminder = turn_freeform_reminder(turn)
-    text = explicit_freeform_text(reminder)
-    if not text:
-        return False
-    if not any(pattern.lower() in text.lower() for pattern in FREEFORM_REMINDER_PATTERNS):
-        return False
-    if has_locked_menu_language(text):
-        return False
-    if has_rawish_display_markers(reminder, RAW_ACTION_DISPLAY_KEYS):
-        return False
-    return True
-
-
-def has_locked_menu_language(value: Any) -> bool:
-    if isinstance(value, str):
-        text = value.lower()
-        if any(pattern.lower() in text for pattern in LOCKED_MENU_PATTERNS):
-            return True
-        if re.search(r"(请|回复|输入).{0,8}(编号|数字|[1-4][/、,， ]+[1-4])", value):
-            return True
-        if re.search(r"(choose|select|pick).{0,8}(one|number|option)", text):
-            return True
-        return False
-    if isinstance(value, list):
-        return any(has_locked_menu_language(item) for item in value)
-    if isinstance(value, dict):
-        return any(has_locked_menu_language(item) for item in value.values())
-    return False
-
-
-def has_freeform_reminder_language(value: Any) -> bool:
-    if isinstance(value, str):
-        text = value.lower()
-        return any(pattern.lower() in text for pattern in FREEFORM_REMINDER_PATTERNS)
-    if isinstance(value, list):
-        return any(has_freeform_reminder_language(item) for item in value)
-    if isinstance(value, dict):
-        return any(has_freeform_reminder_language(item) for item in value.values())
-    return False
-
-
-def check_story_scene(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
-    check_display_alias(turn, "story_scene", index, warnings)
-    scene = turn_story_scene(turn)
-    if scene is None:
-        return
-    if not isinstance(scene, (str, list, dict)):
-        warnings.append(f"turns[{index}].story_scene should be a string, list, or object")
-        return
-    if not has_textish_content(scene):
-        warnings.append(f"turns[{index}].story_scene is empty")
-    elif textish_length(scene) < 20:
-        warnings.append(f"turns[{index}].story_scene is very short; record scene prose, not only an event title")
-    check_no_rawish_display_field("story_scene", scene, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
-
-
-def check_visible_delta(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
-    check_display_alias(turn, "visible_delta", index, warnings)
-    delta = turn_visible_delta(turn)
-    if delta is None:
-        return
-    if not isinstance(delta, (str, list, dict)):
-        warnings.append(f"turns[{index}].visible_delta should be a string, list, or object")
-        return
-    if not has_textish_content(delta):
-        warnings.append(f"turns[{index}].visible_delta is empty")
-    check_no_rawish_display_field("visible_delta", delta, index, RAW_DELTA_DISPLAY_KEYS, warnings)
-
-
-def check_visible_actions(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
-    check_display_alias(turn, "visible_actions", index, warnings)
-    actions = turn_visible_actions(turn)
-    if actions is None:
-        return
-    if not isinstance(actions, list):
-        warnings.append(f"turns[{index}].visible_actions should be a list of 2-4 player-facing action labels")
-        check_no_rawish_display_field("visible_actions", actions, index, RAW_ACTION_DISPLAY_KEYS, warnings)
-        return
-    labels = visible_action_labels(turn)
-    if len(labels) != len(actions):
-        warnings.append(f"turns[{index}].visible_actions should use strings or objects with label/text/action/title")
-    if not (2 <= len(labels) <= 4):
-        warnings.append(f"turns[{index}].visible_actions has {len(labels)} entries; expected 2-4 player-facing affordances")
-    duplicates = sorted({label for label in labels if labels.count(label) > 1})
-    if duplicates:
-        warnings.append(f"turns[{index}].visible_actions contains duplicate labels: {duplicates}")
-    if has_locked_menu_language(actions):
-        warnings.append(f"turns[{index}].visible_actions uses locked-menu language; entries should be affordances")
-    if has_freeform_reminder_language(labels):
-        warnings.append(f"turns[{index}].visible_actions appears to include the free-form reminder; move that text to freeform_reminder")
-    check_no_rawish_display_field("visible_actions", actions, index, RAW_ACTION_DISPLAY_KEYS, warnings)
-
-
-def check_freeform_reminder(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
-    check_display_alias(turn, "freeform_reminder", index, warnings)
-    reminder = turn_freeform_reminder(turn)
-    if reminder is None:
-        return
-    if not isinstance(reminder, (bool, str, list, dict)):
-        warnings.append(f"turns[{index}].freeform_reminder should be a bool, string, list, or object")
-        return
-    if reminder is True:
-        warnings.append(f"turns[{index}].freeform_reminder=true is accepted as compatibility evidence; prefer actual player-facing reminder text")
-    elif reminder is False:
-        warnings.append(f"turns[{index}].freeform_reminder is false; ordinary play should preserve free-form action")
-    elif not has_textish_content(reminder):
-        warnings.append(f"turns[{index}].freeform_reminder is empty")
-    if has_freeform_reminder_evidence(turn) and not has_explicit_freeform_reminder(turn):
-        warnings.append(f"turns[{index}].freeform_reminder should explicitly say the user may answer freely")
-    if has_locked_menu_language(reminder):
-        warnings.append(f"turns[{index}].freeform_reminder uses locked-menu language")
-    check_no_rawish_display_field("freeform_reminder", reminder, index, RAW_ACTION_DISPLAY_KEYS, warnings)
-
-
-def has_visible_snapshot(turn: dict[str, Any]) -> bool:
-    snapshot = turn_visible_snapshot(turn)
-    if isinstance(snapshot, str):
-        return bool(snapshot.strip())
-    if isinstance(snapshot, dict):
-        return any(value not in (None, "", [], {}) for value in snapshot.values())
-    return False
-
-
-def visible_snapshot_board_keys(turn: dict[str, Any]) -> set[str]:
-    snapshot = turn_visible_snapshot(turn)
-    if not isinstance(snapshot, dict):
-        return set()
-    return {
-        key
-        for key in snapshot
-        if key in VISIBLE_SNAPSHOT_KEYS and snapshot.get(key) not in (None, "", [], {})
-    }
-
-
-def check_visible_snapshot(turn: dict[str, Any], index: int, warnings: list[str]) -> None:
-    check_display_alias(turn, "visible_snapshot", index, warnings)
-    snapshot = turn_visible_snapshot(turn)
-    if snapshot is None:
-        return
-    if isinstance(snapshot, str):
-        if not snapshot.strip():
-            warnings.append(f"turns[{index}].visible_snapshot is empty")
-        else:
-            check_no_rawish_display_field("visible_snapshot", snapshot, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
-        return
-    if not isinstance(snapshot, dict):
-        warnings.append(f"turns[{index}].visible_snapshot should be a string or object")
-        return
-    if not snapshot:
-        warnings.append(f"turns[{index}].visible_snapshot is empty")
-        return
-    if not visible_snapshot_board_keys(turn):
-        warnings.append(f"turns[{index}].visible_snapshot has no recognizable board fields")
-    check_no_rawish_display_field("visible_snapshot", snapshot, index, RAW_LEDGER_DISPLAY_KEYS, warnings)
-
-
-def raw_state_exposed(turn: dict[str, Any]) -> bool:
-    return turn.get("raw_state_exposed") is True or turn.get("raw_json_exposed") is True
-
-
-def raw_state_exposure_allowed(turn: dict[str, Any], transcript: dict[str, Any]) -> bool:
-    return (
-        transcript.get("debug") is True
-        or transcript.get("raw_state_requested") is True
-        or turn.get("debug") is True
-        or turn.get("raw_state_requested") is True
-    )
-
-
-def turn_intent_source(turn: dict[str, Any]) -> str | None:
-    value = turn.get("intent_source")
-    if isinstance(value, str):
-        return value
-    intent = turn.get("intent")
-    if isinstance(intent, dict) and isinstance(intent.get("source"), str):
-        return intent["source"]
-    for key in ["state", "post_state"]:
-        state = turn.get(key)
-        if isinstance(state, dict):
-            last_intent = state.get("last_intent")
-            if isinstance(last_intent, dict) and isinstance(last_intent.get("source"), str):
-                return last_intent["source"]
-    return None
-
-
-def turn_has_delta(turn: dict[str, Any]) -> bool:
-    if isinstance(turn.get("delta"), dict):
-        return True
-    for key in ["state", "post_state"]:
-        state = turn.get(key)
-        if isinstance(state, dict) and isinstance(state.get("last_delta"), dict):
-            return True
-    return False
-
-
-def turn_deltas(turn: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
-    deltas: list[tuple[str, dict[str, Any]]] = []
-    delta = turn.get("delta")
-    if isinstance(delta, dict):
-        deltas.append(("delta", delta))
-    for key in ["state", "post_state"]:
-        state = turn.get(key)
-        if isinstance(state, dict) and isinstance(state.get("last_delta"), dict):
-            deltas.append((f"{key}.last_delta", state["last_delta"]))
-    return deltas
-
-
-def delta_landing_candidates(turn: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
-    delta = turn.get("delta")
-    if isinstance(delta, dict):
-        return [("delta", delta)]
-    post_state = turn.get("post_state")
-    if isinstance(post_state, dict) and isinstance(post_state.get("last_delta"), dict):
-        return [("post_state.last_delta", post_state["last_delta"])]
+def event_ids(turn: dict[str, Any]) -> list[str]:
+    raw = turn.get("event_ids", turn.get("event_id", turn.get("events", [])))
+    if isinstance(raw, str):
+        return [raw]
+    if isinstance(raw, list):
+        return [str(item) for item in raw if isinstance(item, (str, int))]
     return []
 
 
-def has_durable_delta_material(delta: dict[str, Any]) -> bool:
-    for key in DURABLE_DELTA_KEYS:
-        value = delta.get(key)
-        if value not in (None, "", [], {}):
-            return True
-    return False
-
-
-def after_value(value: Any) -> Any:
-    if isinstance(value, list) and value:
-        return value[-1]
-    return value
-
-
-def equivalent_delta_value(expected: Any, actual: Any) -> bool:
-    if isinstance(expected, dict) and "label" in expected:
-        expected = expected.get("label")
-    if isinstance(actual, dict) and "label" in actual:
-        actual = actual.get("label")
-    if validate_state.is_int_like(expected) and validate_state.is_int_like(actual):
-        return int(expected) == int(actual)
-    return expected == actual
-
-
-def check_scalar_delta_landing(delta: dict[str, Any], turn: dict[str, Any], post_state: dict[str, Any], path: str, index: int, warnings: list[str]) -> None:
-    for key in ["age", "time", "life_cap", "existence_state", "realm", "terminal", "terminal_reason"]:
-        if key not in delta:
-            continue
-        expected = after_value(delta.get(key))
-        if key not in post_state:
-            warnings.append(f"turns[{index}].{path}.{key} cannot land because post_state.{key} is missing")
-            continue
-        actual = post_state.get(key)
-        if not equivalent_delta_value(expected, actual):
-            warnings.append(f"turns[{index}].{path}.{key} expected post_state value {expected!r}, got {actual!r}")
-        pre_state = turn.get("state")
-        if isinstance(pre_state, dict) and isinstance(delta.get(key), list) and delta.get(key):
-            before = delta[key][0]
-            if key in pre_state and not equivalent_delta_value(before, pre_state.get(key)):
-                warnings.append(f"turns[{index}].{path}.{key} before-value {before!r} does not match state.{key}={pre_state.get(key)!r}")
-
-
-def check_attribute_delta_landing(delta: dict[str, Any], turn: dict[str, Any], post_state: dict[str, Any], path: str, index: int, warnings: list[str]) -> None:
-    attrs = delta.get("attributes")
-    if not isinstance(attrs, dict) or not attrs:
-        return
-    post_attrs = post_state.get("attributes")
-    if not isinstance(post_attrs, dict):
-        warnings.append(f"turns[{index}].{path}.attributes cannot land because post_state.attributes is missing")
-        return
-    pre_state = turn.get("state")
-    pre_attrs = pre_state.get("attributes") if isinstance(pre_state, dict) else None
-    for attr, raw_delta in attrs.items():
-        if not validate_state.is_int_like(raw_delta):
-            continue
-        if attr not in post_attrs or not validate_state.is_int_like(post_attrs.get(attr)):
-            warnings.append(f"turns[{index}].{path}.attributes.{attr} cannot land because post_state.attributes.{attr} is missing or nonnumeric")
-            continue
-        delta_value = int(raw_delta)
-        if not isinstance(pre_attrs, dict) or attr not in pre_attrs or not validate_state.is_int_like(pre_attrs.get(attr)):
-            warnings.append(f"turns[{index}].{path}.attributes.{attr} needs turn state with pre-turn value to prove {delta_value:+d} landed")
-            continue
-        expected = int(pre_attrs[attr]) + delta_value
-        actual = int(post_attrs[attr])
-        if actual != expected:
-            warnings.append(f"turns[{index}].{path}.attributes.{attr} expected post_state value {expected} from pre-state plus delta, got {actual}")
-
-
-def check_turn_delta_landing(turn: dict[str, Any], index: int, errors: list[str], warnings: list[str]) -> bool:
-    candidates = delta_landing_candidates(turn)
-    if not candidates:
-        return False
-    post_state = turn.get("post_state")
-    if not isinstance(post_state, dict):
-        warnings.append(f"turns[{index}] has delta evidence but no post_state; durable changes cannot be proven on the protagonist ledger")
-        return False
-
-    landed = 0
-    for path, delta in candidates:
-        if not has_durable_delta_material(delta):
-            warnings.append(f"turns[{index}].{path} has no durable state material; summary-only deltas do not prove ledger change")
-            continue
-        delta_errors: list[str] = []
-        delta_warnings: list[str] = []
-        validate_state.check_last_delta(delta, post_state, delta_errors, delta_warnings)
-        check_scalar_delta_landing(delta, turn, post_state, path, index, delta_warnings)
-        check_attribute_delta_landing(delta, turn, post_state, path, index, delta_warnings)
-        for error in delta_errors:
-            errors.append(f"turns[{index}].{path} cannot be checked against post_state: {error}")
-        if path != "post_state.last_delta":
-            for warning in delta_warnings:
-                warnings.append(f"turns[{index}].{path} does not land cleanly in post_state: {warning}")
-        if not delta_errors and not delta_warnings:
-            landed += 1
-    return landed > 0
-
-
-def known_hooks_from_turn(turn: dict[str, Any]) -> set[str]:
-    hooks: set[str] = set()
-    for key in ["state", "post_state"]:
-        state = turn.get(key)
-        if isinstance(state, dict):
-            hooks.update(validate_state.collect_known_hooks(state))
-    for _, delta in turn_deltas(turn):
-        hooks.update(validate_state.collect_delta_hooks(delta))
-    return hooks
-
-
-def nonempty_string_list(value: Any) -> bool:
-    return isinstance(value, list) and any(isinstance(item, str) and item.strip() for item in value)
-
-
-def check_turn_intent_trace(turn: dict[str, Any], source: str, index: int, errors: list[str], warnings: list[str]) -> None:
-    traces: list[tuple[str, Any]] = []
-    for path, delta in turn_deltas(turn):
-        if "intent_trace" in delta:
-            traces.append((path, delta.get("intent_trace")))
-    if not traces:
-        warnings.append(f"turns[{index}] uses {source} but has no last_delta.intent_trace")
-        return
-
-    complete_traces = 0
-    known_hooks = known_hooks_from_turn(turn)
-    for path, trace in traces:
-        trace_path = f"turns[{index}].{path}.intent_trace"
-        if not isinstance(trace, dict):
-            errors.append(f"{trace_path} must be an object")
-            continue
-        trace_source = trace.get("source")
-        if trace_source is not None and trace_source != source:
-            warnings.append(f"{trace_path}.source={trace_source} does not match intent source {source}")
-        if not nonempty_string_list(trace.get("preserved")):
-            warnings.append(f"{trace_path}.preserved should name the custom action parts that survived resolution")
-        state_hooks = trace.get("state_hooks")
-        if not nonempty_string_list(state_hooks):
-            warnings.append(f"{trace_path}.state_hooks should name ledger hooks touched by the custom action")
-        elif known_hooks:
-            unknown_hooks = [str(hook) for hook in state_hooks if str(hook) not in known_hooks]
-            if unknown_hooks:
-                warnings.append(f"{trace_path}.state_hooks do not reference known or changed ledger hooks: {unknown_hooks}")
-        if not (isinstance(trace.get("outcome"), str) and trace["outcome"].strip()) and not (isinstance(trace.get("adjudication"), str) and trace["adjudication"].strip()):
-            warnings.append(f"{trace_path} should include outcome or adjudication")
-        if (
-            nonempty_string_list(trace.get("preserved"))
-            and nonempty_string_list(trace.get("state_hooks"))
-            and ((isinstance(trace.get("outcome"), str) and trace["outcome"].strip()) or (isinstance(trace.get("adjudication"), str) and trace["adjudication"].strip()))
-        ):
-            complete_traces += 1
-    if not complete_traces:
-        warnings.append(f"turns[{index}] uses {source} but has no complete intent_trace")
-
-
-def has_phase_endpoint(transcript: dict[str, Any], states: list[tuple[str, dict[str, Any]]]) -> bool:
-    if transcript.get("phase_endpoint") is True:
+def is_freeform(turn: dict[str, Any]) -> bool:
+    source = str(turn.get("intent_source", turn.get("action_source", ""))).lower()
+    if source == "freeform":
         return True
-    for _, state in states:
-        if state.get("terminal") is True:
-            return True
-        summaries = state.get("phase_summaries")
-        if isinstance(summaries, list) and summaries:
-            return True
-    turns = transcript.get("turns")
-    if isinstance(turns, list):
-        for turn in turns:
-            if isinstance(turn, dict) and turn.get("phase_endpoint") is True:
-                return True
-    return False
+    action = str(turn.get("user_action", "")).strip()
+    return bool(action and not action.startswith(("选", "choose", "select")))
 
 
-def state_time_label(state: dict[str, Any]) -> str | None:
-    time_value = state.get("time")
-    if isinstance(time_value, dict) and isinstance(time_value.get("label"), str) and time_value["label"].strip():
-        return time_value["label"]
-    if isinstance(time_value, str) and time_value.strip():
-        return time_value
-    return None
+def is_modified_entry(turn: dict[str, Any]) -> bool:
+    source = str(turn.get("intent_source", turn.get("action_source", ""))).lower()
+    if source == "modified_entry":
+        return True
+    action = str(turn.get("user_action", ""))
+    return action.startswith("选") and any(marker in action for marker in ["但", "同时", "不过", "改成"])
 
 
-def state_age_point(path: str, state: Any) -> tuple[str, int, str | None] | None:
-    if not isinstance(state, dict):
-        return None
-    age = validate_state.int_or_none(state.get("age"))
-    if age is None:
-        return None
-    return path, age, state_time_label(state)
+def check_actions(turn: dict[str, Any], index: int, warnings: list[str]) -> bool:
+    actions = first_field(turn, ALIASES["actions"])
+    if actions is None:
+        return False
+    if not isinstance(actions, list):
+        warnings.append(f"turns[{index}].actions should be a list when present")
+        return False
+    if len(actions) < 2 or len(actions) > 4:
+        warnings.append(f"turns[{index}].actions has {len(actions)} entries; expected 2-4 when actions are shown")
+    for action_index, action in enumerate(actions):
+        if isinstance(action, str):
+            if not action.strip():
+                warnings.append(f"turns[{index}].actions[{action_index}] is empty")
+        elif isinstance(action, dict):
+            label = action.get("label") or action.get("text")
+            if not isinstance(label, str) or not label.strip():
+                warnings.append(f"turns[{index}].actions[{action_index}] lacks a label")
+            if any(key in action for key in ["state_hooks", "targets", "risk", "checks"]):
+                warnings.append(f"turns[{index}].actions[{action_index}] exposes internal affordance metadata")
+        else:
+            warnings.append(f"turns[{index}].actions[{action_index}] should be a string or label object")
+    return bool(actions)
 
 
-def turn_time_label(turn: dict[str, Any], key: str) -> str | None:
-    candidates = [f"time_{key.removeprefix('age_')}", "time"]
-    for candidate in candidates:
-        value = turn.get(candidate)
-        if isinstance(value, str) and value.strip():
-            return value
-        if isinstance(value, dict) and isinstance(value.get("label"), str) and value["label"].strip():
-            return value["label"]
-    return None
+def check_state_object(value: Any, path: str, errors: list[str], warnings: list[str]) -> None:
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        warnings.append(f"{path} should be an object when present")
+        return
+    result = validate_state.validate(value)
+    for error in result["errors"]:
+        errors.append(f"{path}: {error}")
+    for warning in result["warnings"]:
+        warnings.append(f"{path}: {warning}")
 
 
-def turn_age_point(index: int, turn: dict[str, Any]) -> tuple[str, int, str | None] | None:
-    point = state_age_point(f"turns[{index}].post_state", turn.get("post_state"))
-    if point is not None:
-        return point
-    for key in ["age_after", "age"]:
-        age = validate_state.int_or_none(turn.get(key))
-        if age is not None:
-            return f"turns[{index}].{key}", age, turn_time_label(turn, key)
-    return None
-
-
-def age_points_from_transcript(transcript: dict[str, Any]) -> list[tuple[str, int, str | None]]:
-    points: list[tuple[str, int, str | None]] = []
-    initial = state_age_point("initial_state", transcript.get("initial_state"))
-    if initial is not None:
-        points.append(initial)
-    turns = transcript.get("turns")
-    if isinstance(turns, list):
-        for index, turn in enumerate(turns):
-            if isinstance(turn, dict):
-                point = turn_age_point(index, turn)
-                if point is not None:
-                    points.append(point)
-    final = state_age_point("final_state", transcript.get("final_state"))
-    if final is not None and (not points or points[-1][1] != final[1]):
-        points.append(final)
-    return points
-
-
-def pacing_metrics(points: list[tuple[str, int, str | None]]) -> dict[str, Any]:
-    if not points:
-        return {
-            "age_points": [],
-            "age_start": None,
-            "age_end": None,
-            "age_span": None,
-            "max_age_jump": None,
-            "same_age_transitions": 0,
-            "same_age_missing_time": [],
-            "age_regressions": [],
-        }
-    jumps = [after[1] - before[1] for before, after in zip(points, points[1:])]
-    regressions = [
-        {"from": before[0], "to": after[0], "before": before[1], "after": after[1]}
-        for before, after in zip(points, points[1:])
-        if after[1] < before[1]
-    ]
-    same_age_missing_time = [
-        {"from": before[0], "to": after[0], "age": after[1]}
-        for before, after in zip(points, points[1:])
-        if after[1] == before[1] and (not before[2] or not after[2])
-    ]
-    return {
-        "age_points": [{"path": path, "age": age, "time": time_label} for path, age, time_label in points],
-        "age_start": points[0][1],
-        "age_end": points[-1][1],
-        "age_span": points[-1][1] - points[0][1],
-        "max_age_jump": max(jumps) if jumps else 0,
-        "same_age_transitions": sum(1 for jump in jumps if jump == 0),
-        "same_age_missing_time": same_age_missing_time,
-        "age_regressions": regressions,
-    }
-
-
-def validate(
-    transcript: dict[str, Any],
-    *,
-    min_turns: int = 0,
-    min_freeform: int = 0,
-    min_modified_entry: int = 0,
-    max_age_jump: int | None = None,
-    max_age_span: int | None = None,
-    min_same_age_turns: int = 0,
-    forbid_age_regression: bool = False,
-    min_visible_snapshots: int = 0,
-    min_story_scenes: int = 0,
-    min_visible_deltas: int = 0,
-    forbid_raw_state: bool = False,
-    min_visible_actions: int = 0,
-    min_freeform_reminders: int = 0,
-    min_landed_deltas: int = 0,
-) -> dict[str, Any]:
+def validate(transcript: dict[str, Any], *, min_turns: int = 0, min_freeform: int = 0, min_modified_entry: int = 0, forbid_raw_state: bool = False) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
-    state_results: list[dict[str, Any]] = []
 
-    kind = transcript.get("kind")
-    if kind not in VALID_KINDS:
-        errors.append(f"kind must be one of {sorted(VALID_KINDS)}")
-    if transcript.get("version") != 1:
-        errors.append("version must be 1")
-    hosting = transcript.get("hosting")
-    if hosting is not None and hosting not in {"manual", "script-assisted", "script-driven"}:
-        errors.append("hosting must be manual, script-assisted, or script-driven when present")
+    if not isinstance(transcript, dict):
+        return {"ok": False, "errors": ["playtest transcript must be a JSON object"], "warnings": [], "summary": {}}
 
     turns = transcript.get("turns")
     if not isinstance(turns, list):
         errors.append("turns must be a list")
         turns = []
-    if len(turns) < min_turns:
-        warnings.append(f"turns has {len(turns)} entries; expected at least {min_turns}")
 
-    custom_action_turns = 0
+    check_state_object(transcript.get("initial_state"), "initial_state", errors, warnings)
+    check_state_object(transcript.get("final_state"), "final_state", errors, warnings)
+
+    story_turns = 0
+    action_turns = 0
     freeform_turns = 0
-    modified_entry_turns = 0
-    turns_with_delta = 0
-    turns_with_landed_delta = 0
-    turns_with_affordances = 0
-    turns_with_story_scene = 0
-    turns_with_visible_delta = 0
-    turns_with_visible_actions = 0
-    turns_with_clean_visible_actions = 0
-    turns_with_freeform_reminder = 0
-    turns_with_freeform_reminder_evidence = 0
-    per_turn_state_snapshots = 0
-    turns_with_visible_snapshot = 0
-    structured_visible_snapshots = 0
-    raw_state_exposed_turns = 0
-    disallowed_raw_state_exposed_turns = 0
-    transcript_event_ids: set[str] = set()
+    modified_turns = 0
+    raw_state_turns = 0
+    manual_turns = 0
+    special_candidate_turns = 0
 
     for index, turn in enumerate(turns):
         if not isinstance(turn, dict):
             errors.append(f"turns[{index}] must be an object")
             continue
-        if not isinstance(turn.get("user_action"), str) or not turn["user_action"].strip():
-            warnings.append(f"turns[{index}].user_action is missing or empty")
-        source = turn_intent_source(turn)
-        if source is None:
-            warnings.append(f"turns[{index}] has no intent source")
-        elif source not in INTENT_SOURCES:
-            errors.append(f"turns[{index}].intent_source is invalid: {source}")
-        elif source in CUSTOM_INTENT_SOURCES:
-            custom_action_turns += 1
-            if source == "freeform":
-                freeform_turns += 1
-            elif source == "modified_entry":
-                modified_entry_turns += 1
-            check_turn_intent_trace(turn, source, index, errors, warnings)
-        if turn_has_delta(turn):
-            turns_with_delta += 1
-            if check_turn_delta_landing(turn, index, errors, warnings):
-                turns_with_landed_delta += 1
+        story = first_field(turn, ALIASES["story_scene"])
+        if has_text(story):
+            story_turns += 1
         else:
-            warnings.append(f"turns[{index}] has no delta or post-state last_delta")
-        if has_story_scene(turn):
-            turns_with_story_scene += 1
-        check_story_scene(turn, index, warnings)
-        if has_visible_delta(turn):
-            turns_with_visible_delta += 1
-        check_visible_delta(turn, index, warnings)
-        if has_visible_actions(turn):
-            turns_with_visible_actions += 1
-        if has_clean_visible_actions(turn):
-            turns_with_clean_visible_actions += 1
-        check_visible_actions(turn, index, warnings)
-        if has_freeform_reminder_evidence(turn):
-            turns_with_freeform_reminder_evidence += 1
-        if has_explicit_freeform_reminder(turn):
-            turns_with_freeform_reminder += 1
-        check_freeform_reminder(turn, index, warnings)
-        if turn_has_affordances(turn):
-            turns_with_affordances += 1
-        else:
-            warnings.append(f"turns[{index}] has no next_affordances evidence")
-        if has_visible_snapshot(turn):
-            turns_with_visible_snapshot += 1
-            if visible_snapshot_board_keys(turn):
-                structured_visible_snapshots += 1
-        check_visible_snapshot(turn, index, warnings)
-        if raw_state_exposed(turn):
-            raw_state_exposed_turns += 1
-            if forbid_raw_state and not raw_state_exposure_allowed(turn, transcript):
-                disallowed_raw_state_exposed_turns += 1
-                warnings.append(f"turns[{index}] exposes raw state during ordinary play; use visible_snapshot unless raw state was requested/debug")
-        if isinstance(turn.get("state"), dict) or isinstance(turn.get("post_state"), dict):
-            per_turn_state_snapshots += 1
-        transcript_event_ids.update(event_ids_from_turn(turn))
+            warnings.append(f"turns[{index}] has no story_scene/prose")
 
-    if not custom_action_turns:
-        warnings.append("playtest has no freeform or modified_entry turns")
+        if check_actions(turn, index, warnings):
+            action_turns += 1
+
+        if is_freeform(turn):
+            freeform_turns += 1
+        if is_modified_entry(turn):
+            modified_turns += 1
+
+        ids = event_ids(turn)
+        if any(event_id.startswith("manual_") for event_id in ids):
+            manual_turns += 1
+        if not ids:
+            warnings.append(f"turns[{index}] has no event_id/event_ids/manual_* note")
+
+        if turn.get("raw_state_exposed") is True:
+            raw_state_turns += 1
+            if forbid_raw_state and not turn.get("raw_state_requested"):
+                warnings.append(f"turns[{index}] exposes raw state during ordinary play")
+
+        state = first_field(turn, ALIASES["state"])
+        check_state_object(state, f"turns[{index}].state", errors, warnings)
+
+        before = turn.get("special_candidates_before")
+        after = turn.get("special_candidates_after")
+        if before is not None or after is not None:
+            special_candidate_turns += 1
+            if not isinstance(before, list) and before is not None:
+                warnings.append(f"turns[{index}].special_candidates_before should be a list")
+            if not isinstance(after, list) and after is not None:
+                warnings.append(f"turns[{index}].special_candidates_after should be a list")
+
+    if len(turns) < min_turns:
+        warnings.append(f"playtest has {len(turns)} turns; expected at least {min_turns}")
     if freeform_turns < min_freeform:
-        warnings.append(f"playtest has {freeform_turns} freeform turns; expected at least {min_freeform}")
-    if modified_entry_turns < min_modified_entry:
-        warnings.append(f"playtest has {modified_entry_turns} modified_entry turns; expected at least {min_modified_entry}")
-    if turns_with_landed_delta < min_landed_deltas:
-        warnings.append(f"playtest has {turns_with_landed_delta} landed deltas; expected at least {min_landed_deltas}")
-    if turns and not per_turn_state_snapshots:
-        warnings.append("playtest has no per-turn state snapshots")
-    if turns and not turns_with_affordances:
-        warnings.append("playtest has no recorded next_affordances")
-    if turns_with_visible_snapshot < min_visible_snapshots:
-        warnings.append(f"playtest has {turns_with_visible_snapshot} visible snapshots; expected at least {min_visible_snapshots}")
-    if turns_with_story_scene < min_story_scenes:
-        warnings.append(f"playtest has {turns_with_story_scene} story scenes; expected at least {min_story_scenes}")
-    if turns_with_visible_delta < min_visible_deltas:
-        warnings.append(f"playtest has {turns_with_visible_delta} visible deltas; expected at least {min_visible_deltas}")
-    if turns_with_clean_visible_actions < min_visible_actions:
-        warnings.append(f"playtest has {turns_with_clean_visible_actions} turns with clean 2-4 visible actions; expected at least {min_visible_actions}")
-    if turns_with_freeform_reminder < min_freeform_reminders:
-        warnings.append(f"playtest has {turns_with_freeform_reminder} free-form reminders; expected at least {min_freeform_reminders}")
-    if forbid_raw_state and disallowed_raw_state_exposed_turns:
-        warnings.append(f"raw state was exposed on {disallowed_raw_state_exposed_turns} turns without debug/raw_state_requested")
+        warnings.append(f"playtest has {freeform_turns} free-form turns; expected at least {min_freeform}")
+    if modified_turns < min_modified_entry:
+        warnings.append(f"playtest has {modified_turns} modified-entry turns; expected at least {min_modified_entry}")
 
-    states = state_objects(transcript)
-    named_state_snapshots = sum(1 for key in ["initial_state", "mid_state", "final_state"] if isinstance(transcript.get(key), dict))
-    if not states:
-        warnings.append("playtest has no state object to validate")
-    for path, state in states:
-        result = validate_state.validate(state)
-        state_results.append({"path": path, "ok": result["ok"], "warnings": result["warnings"], "errors": result["errors"]})
-        if not result["ok"]:
-            errors.append(f"{path} failed state validation")
-        for warning in result["warnings"]:
-            warnings.append(f"{path}: {warning}")
-        transcript_event_ids.update(event_ids_from_state(state))
-
-    if not isinstance(transcript.get("final_state"), dict):
-        warnings.append("playtest.final_state is missing; endpoint state is harder to verify")
-
-    pacing = pacing_metrics(age_points_from_transcript(transcript))
-    pacing_gate_active = max_age_jump is not None or max_age_span is not None or min_same_age_turns > 0 or forbid_age_regression
-    if pacing_gate_active and len(pacing["age_points"]) < 2:
-        warnings.append("pacing gates need at least two age points; include initial_state/final_state, per-turn post_state, or age_after")
-    if pacing_gate_active and pacing["same_age_missing_time"]:
-        warnings.append(f"same-age pacing points are missing time labels: {pacing['same_age_missing_time']}")
-    if forbid_age_regression and pacing["age_regressions"]:
-        warnings.append(f"age decreases across transcript points: {pacing['age_regressions']}")
-    if max_age_jump is not None and pacing["max_age_jump"] is not None and pacing["max_age_jump"] > max_age_jump:
-        warnings.append(f"max age jump is {pacing['max_age_jump']}; expected at most {max_age_jump}")
-    if max_age_span is not None and pacing["age_span"] is not None and pacing["age_span"] > max_age_span:
-        warnings.append(f"age span is {pacing['age_span']}; expected at most {max_age_span}")
-    if pacing["same_age_transitions"] < min_same_age_turns:
-        warnings.append(f"playtest has {pacing['same_age_transitions']} same-age transitions; expected at least {min_same_age_turns}")
-
-    worlds = [(f"{path}.world", state.get("world")) for path, state in states if isinstance(state.get("world"), dict)]
-    top_world = transcript.get("world")
-    if isinstance(top_world, dict):
-        worlds.append(("world", top_world))
-    for world_path, world in worlds:
-        mode = pack_policy_mode(world)
-        if mode in NON_ADJUDICATING_PACK_POLICY_MODES:
-            if is_real_content_pack(world):
-                warnings.append(f"{world_path}.pack_policy.mode={mode} should omit content_pack; list inspected packs in evaluated_packs unless they adjudicate events")
-            non_manual_ids = sorted(event_id for event_id in transcript_event_ids if not event_id.startswith("manual_"))
-            if non_manual_ids:
-                warnings.append(f"{world_path}.pack_policy.mode={mode} but transcript includes non-manual event ids: {non_manual_ids}")
-
-    metrics = {
+    summary = {
         "turns": len(turns),
-        "custom_action_turns": custom_action_turns,
+        "story_turns": story_turns,
+        "action_turns": action_turns,
         "freeform_turns": freeform_turns,
-        "modified_entry_turns": modified_entry_turns,
-        "turns_with_delta": turns_with_delta,
-        "turns_with_landed_delta": turns_with_landed_delta,
-        "turns_with_story_scene": turns_with_story_scene,
-        "turns_with_visible_delta": turns_with_visible_delta,
-        "turns_with_visible_actions": turns_with_visible_actions,
-        "turns_with_clean_visible_actions": turns_with_clean_visible_actions,
-        "turns_with_freeform_reminder": turns_with_freeform_reminder,
-        "turns_with_freeform_reminder_evidence": turns_with_freeform_reminder_evidence,
-        "turns_with_affordances": turns_with_affordances,
-        "turns_with_visible_snapshot": turns_with_visible_snapshot,
-        "structured_visible_snapshots": structured_visible_snapshots,
-        "raw_state_exposed_turns": raw_state_exposed_turns,
-        "disallowed_raw_state_exposed_turns": disallowed_raw_state_exposed_turns,
-        "per_turn_state_snapshots": per_turn_state_snapshots,
-        "named_state_snapshots": named_state_snapshots,
-        "state_snapshots": len(states),
-        "phase_endpoint": has_phase_endpoint(transcript, states),
-        "pacing": pacing,
+        "modified_entry_turns": modified_turns,
+        "manual_turns": manual_turns,
+        "special_candidate_turns": special_candidate_turns,
+        "raw_state_turns": raw_state_turns,
     }
-    return {"ok": not errors, "errors": errors, "warnings": warnings, "metrics": metrics, "state_results": state_results}
+    return {"ok": not errors, "errors": errors, "warnings": warnings, "summary": summary}
 
 
-def main(argv: list[str]) -> int:
-    usage = "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] [--min-freeform N] [--min-modified-entry N] [--min-landed-deltas N] [--min-visible-snapshots N] [--min-story-scenes N] [--min-visible-deltas N] [--min-visible-actions N] [--min-freeform-reminders N] [--max-age-jump N] [--max-age-span N] [--min-same-age-turns N] [--forbid-age-regression] [--forbid-raw-state] PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+def parse_args(argv: list[str]) -> tuple[dict[str, Any], bool, dict[str, int | bool]]:
+    usage = (
+        "Usage: validate_playtest.py [--fail-on-warnings] [--min-turns N] "
+        "[--min-freeform N] [--min-modified-entry N] [--forbid-raw-state] "
+        "PLAYTEST_JSON_PATH_OR_INLINE_OR_-"
+    )
     args = argv[1:]
     if len(args) == 1 and args[0] in {"-h", "--help"}:
         print(usage)
-        return 0
+        raise SystemExit(0)
     fail_on_warnings = "--fail-on-warnings" in args
-    args = [arg for arg in args if arg != "--fail-on-warnings"]
-    forbid_age_regression = "--forbid-age-regression" in args
-    args = [arg for arg in args if arg != "--forbid-age-regression"]
     forbid_raw_state = "--forbid-raw-state" in args
-    args = [arg for arg in args if arg != "--forbid-raw-state"]
-    min_turns = 0
-    min_freeform = 0
-    min_modified_entry = 0
-    min_landed_deltas = 0
-    min_visible_snapshots = 0
-    min_story_scenes = 0
-    min_visible_deltas = 0
-    min_visible_actions = 0
-    min_freeform_reminders = 0
-    max_age_jump: int | None = None
-    max_age_span: int | None = None
-    min_same_age_turns = 0
-    for option, target in [
-        ("--min-turns", "min_turns"),
-        ("--min-freeform", "min_freeform"),
-        ("--min-modified-entry", "min_modified_entry"),
-        ("--min-landed-deltas", "min_landed_deltas"),
-        ("--min-visible-snapshots", "min_visible_snapshots"),
-        ("--min-story-scenes", "min_story_scenes"),
-        ("--min-visible-deltas", "min_visible_deltas"),
-        ("--min-visible-actions", "min_visible_actions"),
-        ("--min-freeform-reminders", "min_freeform_reminders"),
-        ("--max-age-jump", "max_age_jump"),
-        ("--max-age-span", "max_age_span"),
-        ("--min-same-age-turns", "min_same_age_turns"),
-    ]:
-        if option not in args:
+    args = [arg for arg in args if arg not in {"--fail-on-warnings", "--forbid-raw-state"}]
+
+    values: dict[str, int | bool] = {
+        "min_turns": 0,
+        "min_freeform": 0,
+        "min_modified_entry": 0,
+        "forbid_raw_state": forbid_raw_state,
+    }
+    ignored_with_value = {
+        "--min-landed-deltas",
+        "--min-visible-snapshots",
+        "--min-story-scenes",
+        "--min-visible-deltas",
+        "--min-visible-actions",
+        "--min-freeform-reminders",
+        "--max-age-jump",
+        "--max-age-span",
+        "--min-same-age-turns",
+    }
+    index = 0
+    remaining: list[str] = []
+    while index < len(args):
+        arg = args[index]
+        if arg in {"--min-turns", "--min-freeform", "--min-modified-entry"}:
+            if index + 1 >= len(args):
+                print(usage, file=sys.stderr)
+                raise SystemExit(2)
+            try:
+                value = int(args[index + 1])
+            except ValueError:
+                print(usage, file=sys.stderr)
+                raise SystemExit(2)
+            key = arg[2:].replace("-", "_")
+            values[key] = value
+            index += 2
             continue
-        index = args.index(option)
-        try:
-            value = int(args[index + 1])
-        except (IndexError, ValueError):
-            print(usage, file=sys.stderr)
-            return 2
-        if target == "min_turns":
-            min_turns = value
-        elif target == "min_freeform":
-            min_freeform = value
-        elif target == "min_modified_entry":
-            min_modified_entry = value
-        elif target == "min_landed_deltas":
-            min_landed_deltas = value
-        elif target == "min_visible_snapshots":
-            min_visible_snapshots = value
-        elif target == "min_story_scenes":
-            min_story_scenes = value
-        elif target == "min_visible_deltas":
-            min_visible_deltas = value
-        elif target == "min_visible_actions":
-            min_visible_actions = value
-        elif target == "min_freeform_reminders":
-            min_freeform_reminders = value
-        elif target == "max_age_jump":
-            max_age_jump = value
-        elif target == "max_age_span":
-            max_age_span = value
-        elif target == "min_same_age_turns":
-            min_same_age_turns = value
-        args = args[:index] + args[index + 2 :]
-    if len(args) != 1:
+        if arg in ignored_with_value:
+            index += 2
+            continue
+        if arg == "--forbid-age-regression":
+            index += 1
+            continue
+        remaining.append(arg)
+        index += 1
+
+    if len(remaining) != 1:
         print(usage, file=sys.stderr)
-        return 2
+        raise SystemExit(2)
     try:
-        transcript = load_transcript(args[0])
-    except Exception as exc:  # noqa: BLE001 - this is a CLI diagnostic helper.
+        transcript = load_transcript(remaining[0])
+    except Exception as exc:  # noqa: BLE001 - diagnostic CLI.
         print(json.dumps({"ok": False, "errors": [f"could not load playtest: {exc}"], "warnings": []}, ensure_ascii=False, indent=2))
-        return 1
+        raise SystemExit(1)
+    return transcript, fail_on_warnings, values
+
+
+def main(argv: list[str]) -> int:
+    transcript, fail_on_warnings, values = parse_args(argv)
     result = validate(
         transcript,
-        min_turns=min_turns,
-        min_freeform=min_freeform,
-        min_modified_entry=min_modified_entry,
-        max_age_jump=max_age_jump,
-        max_age_span=max_age_span,
-        min_same_age_turns=min_same_age_turns,
-        forbid_age_regression=forbid_age_regression,
-        min_visible_snapshots=min_visible_snapshots,
-        min_story_scenes=min_story_scenes,
-        min_visible_deltas=min_visible_deltas,
-        forbid_raw_state=forbid_raw_state,
-        min_visible_actions=min_visible_actions,
-        min_freeform_reminders=min_freeform_reminders,
-        min_landed_deltas=min_landed_deltas,
+        min_turns=int(values["min_turns"]),
+        min_freeform=int(values["min_freeform"]),
+        min_modified_entry=int(values["min_modified_entry"]),
+        forbid_raw_state=bool(values["forbid_raw_state"]),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if not result["ok"]:

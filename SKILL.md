@@ -1,134 +1,109 @@
 ---
 name: life-restart-world
-description: Run and help build natural-language Life Restart style life simulations in Codex or other agent frameworks. Use when the user wants to play, host, design, extend, or debug an interactive text life simulator with talents, attributes, age events, branching fate, custom worlds, reincarnation, ascension, endings, and structured state tracking inspired by VickScarlet/lifeRestart.
+description: Host and help build natural-language Life Restart style life simulations in Codex or other agent frameworks. Use when the user wants to play, host, design, extend, or debug an interactive text life simulator with talents, six core attributes, age events, branching fate, custom actions, reincarnation, ascension, endings, and lightweight state tracking inspired by VickScarlet/lifeRestart.
 ---
 
 # Life Restart World
 
 ## Purpose
 
-Use this skill to host a narrative-first, stateful life simulation. The user can start a custom life in natural language, make free-form choices, and watch the Game Master maintain a structured state ledger for attributes, relationships, flags, event history, open threads, and endings.
+Use this skill to host **Live Play**: a narrative-first life simulation where the user plays through a custom life in natural language.
 
-The core play object is the state ledger, not the helper script. Treat event packs and scripts as references or adjudication aids. Do not force a custom world through a mismatched event pack.
+The Game Master maintains a small LifeRestart-like state, not a script transcript. Event packs are reference material and candidate generators. The model is responsible for story continuity, free-form action understanding, and consequence adjudication.
 
 The upstream project `VickScarlet/lifeRestart` is MIT licensed. If you reuse upstream code, data, event text, or converted content, preserve the license in `references/lifeRestart-LICENSE.md` and cite the upstream repository.
 
-## Dependency Posture
+## Core State
 
-Default to instruction-only hosting. Do not require network access, package installation, or third-party Python modules.
+Maintain only the `LifeState v1` core during play:
 
-Optional helper scripts in `scripts/` use only Python 3 standard library. Use them for inspection, deterministic spot checks, or importing upstream data. They are not required for hosting and should not override good Game Master judgment.
+- `age`
+- `attrs`: `CHR`, `INT`, `STR`, `MNY`, `SPR`, `LUK`
+- `talents`
+- `flags`
+- `event_history`
+- `special_candidates`
+- `terminal`
+
+Do not add relationship boards, pressure clocks, evidence ledgers, phase summaries, or open-thread lists for v1 play. If the story needs memory, preserve it through the conversation context and compact flags/event history.
 
 ## Reference Map
 
 Load only what is needed:
 
-- `references/game-master-protocol.md`: turn loop, opening guidance, natural-language action handling, output format.
-- `references/world-model.md`: canonical state ledger, attributes, flags, immortality and ascension states.
-- `references/turn-state-contract.md`: state-first turn contract, intent, resolution, delta, and affordance rules.
-- `references/session-world.md`: lightweight world note for custom settings, factions, pressure clocks, and event seeds.
-- `references/prologue-protocol.md`: concrete later-age start and compressed backstory procedure.
-- `references/content-pack-schema.md`: JSON schema for events, talents, choices, effects, and conditions.
-- `references/upstream-mapping.md`: how the original Life Restart modules and XLSX sheets map into this skill.
+- `references/game-master-protocol.md`: Live Play hosting, openings, free-form actions, event use, and narrative output.
+- `references/world-model.md`: `LifeState v1`, attribute meanings, state discipline, terminal handling, and long-life branches.
+- `references/content-pack-schema.md`: event pack fields, conditions, special candidate events, and validation rules.
+- `references/prologue-protocol.md`: starting from a later age or an already-implied situation.
 - `references/safety-boundaries.md`: safety rules for fictional death, reincarnation, minors, self-harm, and high-risk content.
-- `references/playtest-protocol.md`: no-fallback testing rules and how to report exposed problems.
+- `references/upstream-mapping.md`: how original Life Restart data maps into this skill.
 - `references/content-packs/classic-lite.json`: small built-in offline seed pack.
 
-## Hosting Workflow
+Developer-only references:
 
-1. Establish play mode.
-   - If the user gave enough detail, infer the mode and begin with a first playable response.
-   - If the user only says "来一局", "开始", "随机", or equivalent, treat that as enough detail: start a default semi-random standard-pace life and mention they can change style before the first action.
-   - Ask a compact opening prompt only when the user clearly wants to choose setup before play. Ask only for missing essentials, not for a full form.
-   - Default to `narrative-first`, `semi-random`, `standard` pace.
-   - For custom worlds, draft a short session world note before resolving turns. This is a consistency aid, not a content-pack requirement.
-   - For custom or no-pack worlds, set `world.pack_policy` to record whether event packs are unused, reference-only, partially adjudicating, or active.
+- `references/playtest-protocol.md`: how to test Live Play behavior without hiding script/content-pack failures.
+- `references/turn-state-contract.md`: optional internal debugging notes for state updates; not a player-facing mode.
 
-2. Create the initial state ledger.
-   - Include `age`, `life_cap`, `existence_state`, `realm`, attributes, talents, relationships, flags, event history, open threads, and terminal status.
-   - If the user requests a later starting age or situation, generate a compressed prologue first, then begin interactive play at that age with a causally grounded state.
-   - Give the user a short character card before the first turn, then immediately offer 2-4 playable action entries. Do not print raw JSON unless the user asks for debug view.
+## Live Play Workflow
 
-3. Resolve each turn in this order.
-   - Interpret the user's natural-language action into an intent object.
-   - Consult relevant event packs and open threads when they fit the world.
-   - If the pack is only reference material for a custom world, keep adjudication manual and use `manual_*` event ids.
-   - Adjudicate what happens from state, user intent, genre, and any matching event material. If the user acts outside the listed entries, treat that action as first-class play, not as a fallback or error.
-   - Apply effects to the state ledger using the turn state contract.
-   - Render a complete story scene from the rule result.
-   - Present state deltas and 2-4 action entries, while allowing free-form action.
+1. Start play quickly.
+   - If the user says "来一局", "开始", "随机", or similar, begin a default run.
+   - If the user gives a premise, infer reasonable defaults and begin.
+   - Ask only one short follow-up when a missing detail blocks play.
 
-4. Keep narrative and rules aligned.
-   - The story may be vivid, but every mechanical consequence must appear in the state delta.
-   - Do not erase previous timeline facts unless an explicit supernatural or memory-altering event establishes it.
-   - If a user proposes an implausible action, convert it into an attempt with cost, risk, and a check rather than refusing by default.
-   - At natural phase endpoints, close or summarize stale threads into a phase summary so the current board stays playable.
-   - Keep the visible board small: preserve history in timeline and phase summaries, but keep only active relationships, clocks, evidence, and threads in the current snapshot.
-   - Move resolved or archived clocks/evidence out of the active board and into summaries, notes, flags, or timeline.
-   - Do not wait until the final phase endpoint to clean the board. In long arcs, if active `open_threads` or evidence are nearing 7 items, merge, close, or archive stale items before or during the turn that adds another major thread, so the post-turn board is already clean.
-   - In investigation or school/career pressure arcs, consolidate related clues, routines, or temporary contacts into an evidence packet, relationship note, pressure clock, or carried main thread.
-   - When the user asks to save, resume, hand off to another agent, or continue after a long arc, create or consume a compact state checkpoint. Keep ordinary turns light unless a checkpoint is useful.
+2. Create or resume `LifeState v1`.
+   - For a birth start, roll or infer core attributes and talents.
+   - For a later-age start, generate a compressed prologue first, then begin at the requested age with grounded flags, talents, event history, and attributes.
+   - Do not show raw JSON unless the user asks for debug state.
 
-5. End or transcend the life.
-   - Do not hard-cap life at 100 years. Use `life_cap`, `existence_state`, and terminal events.
-   - If age reaches or exceeds `life_cap` while play continues, the ledger must explain it: raise `life_cap`, change `existence_state`/`realm`, or record a terminal/transition event and phase summary.
-   - Events such as resurrection, cultivation, immortality, ascension, or post-human transformation can extend or close the human-life arc.
-   - At the end, summarize lifespan, identity arc, achievements, relationships, regrets, and any inherited talent or next-life hook.
+3. Host each turn as a life scene, not a form.
+   - Read the current state and recent conversation.
+   - Check event-pack candidates when a pack fits the run.
+   - Prioritize `special_candidates` before ordinary events.
+   - Treat event `effects` as an intended or typical result, not a guaranteed outcome.
+   - Parse the user's natural-language action directly with model judgment.
+   - Resolve success, failure, partial success, and side effects from state, genre, action plausibility, and event material.
+   - Update only the core state fields.
 
-## Optional Script Use
+4. Output almost entirely as story.
+   - Write a complete scene.
+   - Mention state changes only when they matter to the player.
+   - When useful, end with 2-4 natural action openings.
+   - Always allow the user to ignore, combine, or rewrite the offered actions.
+   - Never expose JSON, state-diff objects, rule pipelines, event IDs, or validator fields in ordinary play.
 
-Use `scripts/simulate_life.py` when deterministic state stepping is useful, but do not treat it as the canonical game loop:
+5. End, transform, or continue.
+   - Do not hard-cap play at 100 years.
+   - If a long-life, cultivation, resurrection, ascension, or post-human branch occurs, represent it with flags, event history, and terminal state.
+   - `terminal` can close an ordinary death, a transformed human-life arc, or a chosen ending. If play continues after a transformation, clear or replace `terminal` with the new active arc's state.
+
+## Rule Layer vs Model Layer
+
+Rule layer:
+
+- Validates `LifeState v1` field shape.
+- Filters events by age, attributes, talents, flags, and event history.
+- Adds and consumes `special_candidates`.
+- Preserves terminal constraints.
+- Exposes content-pack and script errors during tests.
+
+Model layer:
+
+- Turns event seeds into full story scenes.
+- Understands free-form player actions.
+- Decides whether attempted actions succeed, fail, partially succeed, or backfire.
+- Updates core state directly.
+- Keeps the life coherent through conversation context.
+
+## Developer Diagnostics
+
+Optional scripts in `scripts/` use only Python 3 standard library. They are diagnostic helpers, not the game loop.
+
+Useful checks:
 
 ```bash
-python3 scripts/simulate_life.py new --world "1990s county realism" --seed 7
-python3 scripts/simulate_life.py turn --state state.json --action "I study hard but secretly earn money"
-python3 scripts/simulate_life.py turn --state state.json --intent intent.json --strict
-python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
-python3 scripts/validate_checkpoint.py checkpoint.json
-python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 --min-landed-deltas 8 --min-story-scenes 8 --min-visible-deltas 8 --min-visible-snapshots 8 --min-visible-actions 8 --min-freeform-reminders 8 --forbid-raw-state playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
-Do not use `simulate_life.py` as a later-age prologue generator or same-age micro-turn engine. For starts such as "20 岁大二" or dense arcs such as an investigation, manually create and update the state ledger, then use `scripts/validate_state.py` to check structure. If you probe the content pack during such tests, report strict mismatches instead of converting them into generated fallback events.
-
-Use `scripts/import_liferestart.py` only when an upstream `lifeRestart/data/<locale>/*.xlsx` directory is available and the user wants to convert MIT-licensed original sheets into a content pack. The importer uses `zipfile` and XML parsing from the Python standard library; it does not require `openpyxl`.
-
-Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed to another agent or resumed after a context break. It checks that compact checkpoint fields are expanded enough to reconstruct the state ledger.
-
-When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; for `freeform` or `modified_entry`, `last_delta.intent_trace` should show which custom action parts reached ledger hooks. Do not expose the structured objects to the player unless they ask for raw state.
-
-Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, checks whether turn deltas land in `post_state`, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
-
-For player-output QA, transcript turns may include `story_scene` for the player-facing prose, `visible_delta` for the compact change summary, `visible_snapshot` for the current board, `visible_actions` for the 2-4 player-facing action entries, `freeform_reminder` for the reminder that the user can act freely, and `raw_state_exposed` for whether ordinary play showed raw ledger JSON. Use `--min-story-scenes`, `--min-visible-deltas`, `--min-visible-snapshots`, `--min-visible-actions`, `--min-freeform-reminders`, `--min-landed-deltas`, and `--forbid-raw-state` in strict playtests. These fields are evidence of what the player saw; `post_state` and `final_state` remain internal ledger evidence.
-
-Use the canonical transcript fields above for new playtests. `validate_playtest.py` accepts a few older aliases as compatibility input, but strict QA warns on aliases so new transcripts stay consistent.
-
-For dense arcs or later-age starts where pacing matters, add playtest thresholds such as `--max-age-jump 1`, `--max-age-span 3`, or `--min-same-age-turns 2`. These are QA promises, not live-play rules. Use `--forbid-age-regression` only for ordinary chronological arcs.
-
-For strict QA or CI, add `--fail-on-warnings` to `validate_state.py`, `validate_checkpoint.py`, or `validate_playtest.py` so lifecycle drift, stale hooks, clutter warnings, or insufficient transcript evidence fail the command instead of only appearing in JSON.
-
-Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
-
-For strict custom-world QA, include `world.pack_policy`. Use `mode: "none"` when no pack was consulted, `mode: "reference"` when a pack was inspected but not used for adjudication, `mode: "adjudication"` when selected pack material influenced rulings, and `mode: "active"` only with a real `world.content_pack`.
-
-When playtesting, do not use fallback behavior to hide mismatches. If the script, content pack, or parser cannot support the requested world or action, report the mismatch plainly and continue manually only if the playtest goal is to evaluate Game Master behavior. Use `--strict` for script-assisted tests where generated fallback events or weakly related age events would hide a missing event.
-
-Strict script failures can include `unsupported_world`, `no_matching_event`, or `weak_intent_match`. Treat all of them as useful diagnostics, not as narrative failures to smooth over.
-
-## Output Shape For Play
-
-For each playable turn, respond in this order:
-
-1. A short scene in story form.
-2. A compact state delta.
-3. Current state snapshot.
-4. Action entries:
-   - Include 2-4 plausible action entries.
-   - Make them affordances, not hard limits. Each entry should imply a different method, cost, ally, risk, or future thread.
-   - Internally map each entry to tags, targets, state hooks, and risk; keep that structure hidden unless debug or checkpoint handoff needs it.
-   - End with a reminder that the user can answer freely.
-
-Avoid command-heavy UX. The user should not need to learn `/select`, `/alloc`, or numeric event IDs unless they explicitly ask for a raw engine/debug view.
-
-During QA transcripts, record the player-facing prose as `story_scene`, the visible `变化` section as `visible_delta`, the player-facing current snapshot as `visible_snapshot`, the listed actions as `visible_actions`, and the free-action reminder as `freeform_reminder`; do not expose full ledger JSON to the player unless they requested debug/raw state. Keep `visible_delta` in player language such as "新增状态", "压力变化", or "关系变化"; do not use internal keys such as `flags_added`, `threads_added`, `intent_trace`, or `event_material` in player-facing fields. Keep `visible_actions` as player labels, not internal `state_hooks` / `targets` objects, and keep the free-action reminder separate from the action entries.
+Use `scripts/simulate_life.py` only to inspect event filtering or produce a rough state probe. It does not understand free-form actions the way the model does, and it must not be treated as the canonical Live Play engine.

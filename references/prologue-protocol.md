@@ -2,25 +2,17 @@
 
 Use this when the user wants to start after birth: "从12岁开始", "大学毕业开局", "我已经是筑基修士", or any named situation with implied history.
 
-The goal is not to play every prior turn. The goal is to produce a causally grounded starting state that gives the user a real first playable moment.
-
-Do this manually when the helper script cannot create the requested age or situation. `simulate_life.py` can spot-check ordinary birth-to-age stepping, but it is not a later-age prologue generator and must not replace a causally grounded start state.
+The goal is not to play all prior years. The goal is to create a causally grounded `LifeState v1` and a first playable scene.
 
 ## Procedure
 
-1. Identify the requested start point.
-   - Age, realm, occupation, social role, body state, family state, and any named goal.
-2. Create the earliest-known state.
-   - Usually birth, but it can be awakening, reincarnation, upload, sect entry, or arrival in a new world.
-3. Generate 3-7 compressed beats.
-   - Each beat should change at least one durable state item: attribute, relationship, flag, open thread, clock, talent, realm, or life cap.
-4. Derive the playable state.
-   - Do not leave relationships, flags, and open threads empty if the prologue clearly implies them.
-   - Add prologue beat IDs to both `event_history` and `timeline`. Use authored event IDs when the beat came from an event pack; otherwise use `manual_prologue_*` IDs.
-5. Present a short character card.
-   - Include what the character knows, what they want, what is pressuring them, and where the next scene begins.
-6. Start the first interactive turn.
-   - Offer 2-4 action entries plus free-form action.
+1. Identify the requested start point: age, era, role, body state, talent, social situation, supernatural state, or immediate goal.
+2. Generate 3-7 compressed prior beats.
+3. Each beat should explain at least one current `attrs`, `talents`, `flags`, or `event_history` item.
+4. Use authored event IDs when a content-pack event clearly applies; otherwise use `manual_prologue_*`.
+5. Begin interactive play at the requested age.
+
+Do this in one response. Do not ask the user to play through every prior year unless they explicitly want that.
 
 ## Beat Template
 
@@ -29,10 +21,8 @@ Do this manually when the helper script cannot create the requested age or situa
   "event_id": "manual_prologue_secret_savings",
   "age": 10,
   "summary": "The child secretly saved coins from errands to buy old exercise books.",
-  "effects": {"WIL": 1, "MNY": -1},
-  "relationships": {"mother": {"delta": 1, "note": "notices the restraint but not the secret"}},
-  "flags": ["secret_savings"],
-  "open_threads": ["money_vs_study"]
+  "effects": {"INT": 1, "MNY": -1},
+  "flags": ["secret_savings", "money_vs_study"]
 }
 ```
 
@@ -40,54 +30,49 @@ Do this manually when the helper script cannot create the requested age or situa
 
 ```json
 {
+  "version": 1,
   "age": 12,
-  "attributes": {"CHR": 4, "INT": 8, "STR": 4, "MNY": 2, "SPR": 5, "LUK": 5, "WIL": 7},
-  "relationships": {
-    "mother": {"score": 2, "note": "protective, worried about money"},
-    "teacher_li": {"score": 2, "note": "noticed unusual reading speed"}
-  },
-  "flags": ["teacher_noticed", "family_money_pressure", "secret_savings"],
+  "attrs": {"CHR": 4, "INT": 8, "STR": 4, "MNY": 2, "SPR": 5, "LUK": 5},
+  "talents": ["early_reader"],
+  "flags": ["teacher_noticed", "family_money_pressure", "secret_savings", "computer_curiosity"],
   "event_history": ["manual_prologue_teacher_notice", "manual_prologue_secret_savings"],
-  "open_threads": ["exam_path", "money_vs_study"],
-  "timeline": [
-    {
-      "turn": "prologue",
-      "age": 7,
-      "event_id": "manual_prologue_teacher_notice",
-      "summary": "A teacher noticed the child reading beyond grade level."
-    },
-    {
-      "turn": "prologue",
-      "age": 10,
-      "event_id": "manual_prologue_secret_savings",
-      "summary": "Secret savings began to compete with school time."
-    }
-  ]
+  "special_candidates": [],
+  "terminal": false
 }
 ```
 
 ## Narration Standard
 
-The prologue should be story-shaped, not a raw table. It can list the beats afterward for clarity, but the user should first feel the character has already lived a little.
+The prologue should feel like a short story, not a raw table.
 
-The first character card should be compact and playable:
+Good:
 
 ```text
-12岁，县城初一。INT 8 / STR 4 / MNY 2 / SPR 5 / WIL 7
-知道：家里钱紧，李老师看见了你的努力，机房可能是通向另一条路的门。
-想要：考出去，也想摸到真正的电脑。
-压力：家庭经济 2/5，升学压力 1/4。
-主线：exam_path、money_vs_study、computer_curiosity。
+0岁，你出生在县城边缘的职工楼，家里没有真正饿过，却总在算账。
+4岁，一场病让你身体弱了一点，也让你学会观察大人的脸色。
+7岁，李老师发现你读书很快，开始借旧卷子给你。
+10岁，你偷偷攒零钱，第一次意识到钱和读书会互相抢时间。
+
+现在你12岁，初一。你很聪明，身体不算强，家里钱紧，但你已经被一位老师看见过。机房的门第一次在你眼前开着。
 ```
 
-For tests, clearly label whether the prologue was manually hosted or script-assisted. If the helper script cannot produce the later-age state, report that as an engine limitation and continue manually only when the test is evaluating Game Master behavior.
+Bad:
+
+```text
+age = 12
+INT +2
+flags = [...]
+```
+
+The player should feel the character has already lived a little.
 
 ## Quality Checklist
 
-Before the first interactive turn, check:
+Before the first interactive turn:
 
-- The prologue explains why the character has their current attributes, talents, relationships, flags, and pressure clocks.
-- At least one past beat creates the current desire, and at least one past beat creates the current cost or risk.
-- `event_history` and `timeline` contain the prologue beats with `manual_prologue_*` ids unless a real content pack authored the beat.
-- The first scene begins at a decision point that could go at least two meaningfully different ways.
-- The prologue leaves active hooks to play now; it should not resolve the whole premise before the user acts.
+- The current age has a past, not a blank state.
+- Current high/low attributes are explained by prior beats.
+- At least one flag creates desire, and at least one flag creates cost or risk.
+- `event_history` contains the prior beats.
+- The first scene begins at a decision point.
+- The player can act freely immediately.
