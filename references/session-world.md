@@ -18,7 +18,7 @@ Record pack usage in `world.pack_policy`:
 }
 ```
 
-Use `mode: "none"` when no pack was consulted, `reference` when a pack was inspected but did not adjudicate events, `adjudication` when selected pack material influenced rulings, and `active` only with a real `world.content_pack`. For `none` or `reference`, use `manual_*` event ids so tests can see the custom world was hosted manually.
+Use `mode: "none"` when no pack was consulted, `reference` when a pack was inspected but did not adjudicate events, `adjudication` when selected pack material influenced rulings, and `active` only with a real `world.content_pack`. For `reference`, list inspected packs in `evaluated_packs` and omit `world.content_pack`. For `none` or `reference`, use `manual_*` event ids so tests can see the custom world was hosted manually.
 
 ## Minimal Shape
 

@@ -237,12 +237,14 @@ def check_pack_policy(checkpoint: dict[str, Any], world: dict[str, Any], content
 
     if content_pack_present and mode == "none":
         warnings.append("world.pack_policy.mode=none but world.content_pack is present")
+    if content_pack_present and mode == "reference":
+        warnings.append("world.pack_policy.mode=reference should omit world.content_pack; list inspected packs in evaluated_packs unless they adjudicate events")
     if not content_pack_present and mode == "active":
         warnings.append("world.pack_policy.mode=active requires a real world.content_pack")
     if not content_pack_present and mode in {"reference", "adjudication"}:
         if not isinstance(evaluated_packs, list) or not any(isinstance(item, str) and item.strip() for item in evaluated_packs):
             warnings.append(f"world.pack_policy.mode={mode} should name inspected packs in evaluated_packs")
-    if not content_pack_present and mode in NON_ADJUDICATING_PACK_POLICY_MODES:
+    if mode in NON_ADJUDICATING_PACK_POLICY_MODES:
         non_manual_ids = sorted(event_id for event_id in collect_event_ids(checkpoint) if not event_id.startswith("manual_"))
         if non_manual_ids:
             warnings.append(f"world.pack_policy.mode={mode} but non-manual event ids appear without an active/adjudication pack: {non_manual_ids}")

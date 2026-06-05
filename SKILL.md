@@ -84,6 +84,7 @@ python3 scripts/simulate_life.py turn --state state.json --intent intent.json --
 python3 scripts/simulate_life.py demo --seed 7 --turns 5
 python3 scripts/validate_state.py state.json
 python3 scripts/validate_checkpoint.py checkpoint.json
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
 python3 scripts/validate_content_pack.py references/content-packs/classic-lite.json
 ```
 
@@ -95,7 +96,9 @@ Use `scripts/validate_checkpoint.py` when a save/resume capsule will be handed t
 
 When playtesting ordinary turns, `scripts/validate_state.py` can also check optional `next_affordances`, `last_intent`, and `last_delta` on the ledger. Use these for debug QA of action-entry hooks, natural-language intent preservation, and whether durable consequences landed in state; for `freeform` or `modified_entry`, `last_delta.intent_trace` should show which custom action parts reached ledger hooks. Do not expose the structured objects to the player unless they ask for raw state.
 
-For strict QA or CI, add `--fail-on-warnings` to `validate_state.py` or `validate_checkpoint.py` so lifecycle drift, stale hooks, or clutter warnings fail the command instead of only appearing in JSON.
+Use `scripts/validate_playtest.py` for transcript QA after a multi-turn run. It validates embedded state snapshots with `validate_state.py`, counts free-form or modified-entry turns, checks recorded deltas and affordances, and catches no-pack/reference transcripts that mix in non-`manual_*` event ids.
+
+For strict QA or CI, add `--fail-on-warnings` to `validate_state.py`, `validate_checkpoint.py`, or `validate_playtest.py` so lifecycle drift, stale hooks, clutter warnings, or insufficient transcript evidence fail the command instead of only appearing in JSON.
 
 Use `scripts/validate_content_pack.py` after editing, importing, or selecting a content pack for script-assisted tests. A valid content pack only means the reference data is internally usable; it does not make the pack the canonical engine for custom worlds.
 

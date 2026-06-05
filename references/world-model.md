@@ -59,7 +59,7 @@ Use `world.pack_policy` to make event-pack usage auditable:
 }
 ```
 
-Modes are `none`, `reference`, `adjudication`, and `active`. In `none` or `reference` custom worlds, event ids should use `manual_*`; `active` should only appear with a real `world.content_pack`.
+Modes are `none`, `reference`, `adjudication`, and `active`. In `none` or `reference` custom worlds, event ids should use `manual_*`; `reference` should list inspected packs in `evaluated_packs` instead of `world.content_pack`; `active` should only appear with a real `world.content_pack`.
 
 ## Attributes
 

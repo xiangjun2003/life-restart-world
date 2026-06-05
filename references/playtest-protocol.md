@@ -68,6 +68,46 @@ For skill iteration after a hosting-rule change, prefer a 3-agent full-flow set:
 
 Each tester should record event IDs or `manual_*` rulings, run `scripts/validate_state.py` on at least one mid-run ledger and the endpoint ledger, and report whether the action entries felt like affordances rather than a locked menu. Include structured `next_affordances` in at least one validated live state so duplicate labels, missing state hooks, or cosmetic variants are visible. Include `last_intent` when testing selected-entry modification or free-form action preservation, and validate it soon after that action because `last_intent` is one-turn scoped. Include `last_delta` when testing whether story consequences landed in attributes, relationships, flags, clocks, evidence, threads, timeline, or phase summaries; for `modified_entry` or `freeform`, include `last_delta.intent_trace`. When using a checkpoint, prefer structured `next_affordances` objects and optional `last_intent` / `last_delta` if the next agent needs to preserve the last user move and its durable state effects.
 
+For multi-turn QA, testers may also produce a compact JSON transcript and run:
+
+```bash
+python3 scripts/validate_playtest.py --fail-on-warnings --min-turns 8 --min-freeform 2 --min-modified-entry 1 playtest.json
+```
+
+Minimal transcript shape:
+
+```json
+{
+  "kind": "life_restart_world_playtest",
+  "version": 1,
+  "hosting": "manual",
+  "turns": [
+    {
+      "turn": 1,
+      "user_action": "选 2，但先向老师隐瞒家里的水票账本",
+      "intent_source": "modified_entry",
+      "event_ids": ["manual_turn_archive_access"],
+      "delta": {
+        "intent_trace": {
+          "source": "modified_entry",
+          "preserved": ["hide the family ledger detail"],
+          "state_hooks": ["teacher_trust", "water_ticket_case"],
+          "outcome": "created evidence and changed relationship trust"
+        }
+      },
+      "next_affordances": [
+        {"label": "核对水票", "state_hooks": ["water_ticket_case"], "targets": ["mother"], "risk": "low"},
+        {"label": "追问行会", "state_hooks": ["audit_retaliation"], "targets": ["water_guild"], "risk": "high"}
+      ],
+      "post_state": {}
+    }
+  ],
+  "final_state": {}
+}
+```
+
+`post_state` and `final_state` should be real ledgers when used; `{}` is only a shape placeholder. The playtest validator is not a replacement for the state validator. It checks whether the transcript contains enough evidence: free-form or modified-entry play, event ids, deltas, affordances, state snapshots, and pack-policy consistency.
+
 When the skill seems stable and the goal is broader evaluation, a tester may run a complete small life or ascension arc instead of stopping after 10-14 turns. In that case, still use phase checkpoints so pacing, stale thread cleanup, and ending or transcendence handling are visible in the transcript.
 
 For long-life or ascension tests, include at least one age-cap pressure point: ordinary death near `life_cap`, explicit life extension, resurrection, cultivation breakthrough, immortality, or ascension. The transcript should show whether `life_cap`, `existence_state`, `realm`, terminal status, timeline, and phase summaries stay coherent after the transition.
