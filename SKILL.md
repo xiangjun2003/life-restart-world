@@ -36,7 +36,7 @@ Load only what is needed:
 - `references/content-pack-schema.md`: event pack fields, conditions, special candidate events, and validation rules.
 - `references/prologue-protocol.md`: starting from a later age or an already-implied situation.
 - `references/safety-boundaries.md`: safety rules for fictional death, reincarnation, minors, self-harm, and high-risk content.
-- `references/content-packs/classic-lite.json`: small built-in offline seed pack.
+- `references/content-packs/classic-lite.json`: small built-in offline seed pack. For default or classic-style runs, load it before the first event selection and keep using it as the active candidate source.
 
 ## Live Play Workflow
 
@@ -48,25 +48,32 @@ Load only what is needed:
 2. Create or resume `LifeState v1`.
    - For a birth start, roll or infer core attributes and talents.
    - For a later-age start, generate a compressed prologue first, then begin at the requested age with grounded flags, talents, event history, and attributes.
+   - Maintain this state internally after every resolved scene, even when the player only sees prose.
    - Do not show raw JSON unless the user asks for raw state.
 
-3. Host each turn as a life scene, not a form.
+3. Use meaningful-beat pacing.
+   - Do not default to one year per turn, and do not spend several exchanges inside the same year unless the user asks for close-up play or the scene is a crisis, irreversible choice, terminal moment, or supernatural transition.
+   - In ordinary childhood and school years, a turn can cover 1-3 years. In stable adulthood or old age, a turn can cover 2-10 years. Cultivation, immortal, or post-human arcs can jump decades when quiet time passes.
+   - Resolve small player actions in one scene, then move to the next meaningful age or pressure unless the consequence demands an immediate follow-up.
+   - Aim for a default complete life to feel playable in roughly 18-30 turns, not 80+ yearly stops.
+
+4. Host each turn as a life scene, not a form.
    - Read the current state and recent conversation.
-   - Check event-pack candidates when a pack fits the run.
+   - For default/classic runs, use the loaded `classic-lite` pack each turn as the event candidate source; do not reread the whole pack if it is already in context, but do filter it every turn by current state.
    - Prioritize `special_candidates` before ordinary events.
    - Treat event `effects` as an intended or typical result, not a guaranteed outcome.
    - Parse the user's natural-language action directly with model judgment.
    - Resolve success, failure, partial success, and side effects from state, genre, action plausibility, and event material.
    - Update only the core state fields.
 
-4. Output almost entirely as story.
+5. Output almost entirely as story.
    - Write a complete scene.
-   - Mention state changes only when they matter to the player.
+   - Mention state changes only when they matter to the player. After major changes or every few turns, give a one-sentence state pulse in natural language so the player can feel the maintained state.
    - When useful, end with 2-4 natural action openings.
    - Always allow the user to ignore, combine, or rewrite the offered actions.
    - Never expose JSON, state-diff objects, rule pipelines, event IDs, or validator fields in ordinary play.
 
-5. End, transform, or continue.
+6. End, transform, or continue.
    - Do not hard-cap play at 100 years.
    - If a long-life, cultivation, resurrection, ascension, or post-human branch occurs, represent it with flags, event history, and terminal state.
    - `terminal` can close an ordinary death, a transformed human-life arc, or a chosen ending. If play continues after a transformation, clear or replace `terminal` with the new active arc's state.
@@ -76,7 +83,7 @@ Load only what is needed:
 Rule layer:
 
 - Validates `LifeState v1` field shape.
-- Filters events by age, attributes, talents, flags, and event history.
+- Loads the active event pack for compatible runs, then filters events by age, attributes, talents, flags, and event history each turn.
 - Adds and consumes `special_candidates`.
 - Preserves terminal constraints.
 - Treats malformed or mismatched event material as visible friction instead of silently smoothing it over.

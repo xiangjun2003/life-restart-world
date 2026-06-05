@@ -10,6 +10,7 @@ This repository intentionally stays small: it contains the skill entrypoint, the
 
 - Hosts **Live Play** only: no rigid turn transcript.
 - Maintains a compact `LifeState v1`: `age`, six attributes, talents, flags, event history, special candidates, and terminal state.
+- Uses meaningful-beat pacing, skipping quiet years instead of forcing every year into a separate turn.
 - Uses event packs as candidate material, not as a deterministic game engine.
 - Lets every action and event fail, partially succeed, or backfire when the state makes that more plausible.
 - Supports later-age starts by generating a compressed prologue before interactive play.
@@ -51,7 +52,7 @@ life-restart-world/
 1. The Game Master creates or resumes a `LifeState v1`.
 2. If the user starts at a later age, the Game Master writes a compressed prologue first.
 3. Each turn is a meaningful scene or event fragment, not necessarily one year.
-4. Event candidates are filtered by age, attributes, talents, flags, event history, and special prerequisites.
+4. For default/classic-style runs, the built-in `classic-lite` pack is loaded before the first event selection and filtered each turn by age, attributes, talents, flags, event history, and special prerequisites.
 5. The user's natural-language action is interpreted by the model directly.
 6. The model adjudicates success, failure, partial success, cost, or twist.
 7. The core state is updated, then the player receives mostly narrative output with optional action openings.

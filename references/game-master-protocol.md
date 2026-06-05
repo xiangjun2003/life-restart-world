@@ -10,6 +10,8 @@ Begin play quickly.
 
 If the user says only "来一局", "开始", "随机", or similar, start a default run: ordinary life with rare legendary branches, semi-random attributes, and a small built-in event pack when it fits.
 
+For default, classic, realistic, school, or cultivation-compatible runs, load `references/content-packs/classic-lite.json` before the first event selection. Keep it as the active event source for the session; later turns should consult the loaded pack rather than reloading the file unless context has been lost.
+
 If the user gives a premise, infer the missing details and start. Examples:
 
 - "12岁开始，90年代小县城，聪明但家里穷"
@@ -70,9 +72,25 @@ The prior years are summarized, not played turn by turn. For "从12岁开始", t
 
 Use `prologue-protocol.md` for fuller examples.
 
+## Pacing
+
+Default play should advance through meaningful life beats, not yearly bookkeeping.
+
+- Avoid multiple replies at the same age unless the user explicitly wants close-up play, or the moment is a crisis, irreversible decision, terminal event, ascension/resurrection, or other branch point.
+- Quiet time should be summarized in 1-3 sentences, then play should land on the next event pressure.
+- Childhood and school turns can cover 1-3 years. Stable adult turns can cover 2-10 years. Long-life, cultivation, immortal, or post-human arcs can jump decades or eras when nothing needs close play.
+- When the player gives a small action, resolve it and then advance to the next meaningful beat unless the result creates an immediate decision.
+- A default complete life should usually be playable in about 18-30 turns. Slow down only because the story needs it, not because age advanced by one.
+
+Example pacing:
+
+```text
+6岁到8岁，你的日子被识字、跑操和反复感冒切成很小的块。真正改变你的是8岁秋天那次停电；你在煤油灯下把邻居哥哥丢掉的自然课本读完，第一次意识到世界比县城大得多。
+```
+
 ## Turn Shape
 
-Each user turn is one meaningful scene or event fragment. It is not necessarily a year and not a whole life phase.
+Each user turn is one meaningful scene or event fragment. It may cover one confrontation, several quiet years, or a long time jump, depending on where the next meaningful pressure is.
 
 For each turn, reason internally:
 
@@ -83,12 +101,21 @@ For each turn, reason internally:
 5. Given their state, how plausible is success?
 6. What actually happens: success, failure, partial success, cost, twist, or delayed consequence?
 7. Which core state fields change?
+8. How far should time advance before the next player-facing decision?
 
 This reasoning is internal. The player should receive a story scene, not a checklist.
 
 ## Event Candidate Use
 
-Use event packs when they fit the run.
+Use event packs when they fit the run. In default play, `classic-lite` is the active pack unless the user chose an incompatible custom world.
+
+At each turn:
+
+1. Check whether any authored `special_when` condition has become true; add newly unlocked IDs to `special_candidates`.
+2. Try ready `special_candidates` first.
+3. Filter ordinary events by current age, attributes, talents, flags, and event history.
+4. Prefer candidates that move time forward and create a meaningful pressure, not candidates that keep repeating the same year.
+5. If no authored event fits the user's action or world premise, create a manual event ID and still update `event_history`.
 
 Candidate priority:
 
@@ -158,6 +185,12 @@ Use compact visible state only when it helps the player act. Prefer natural lang
 
 ```text
 你现在还是12岁，但心气被这件事磨低了一点；钱更紧，倒也多了一层识破骗局的经验。
+```
+
+After a major change, or every few turns, include one short state pulse like:
+
+```text
+到16岁时，你的脑子更快了，身体仍旧偏弱，家里的钱也还拧着。
 ```
 
 Instead of raw state-diff output:

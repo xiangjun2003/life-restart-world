@@ -150,11 +150,14 @@ For immortal or post-human arcs, age may become symbolic, but keep it as a numbe
 
 ## State Discipline
 
-- Update `age` only when the scene meaningfully advances time.
+- Initialize `LifeState v1` before the first playable scene. Do not run a scene against a blank or purely implied state.
+- After every resolved scene, consider every core field and keep the current state internally current, even if no visible state panel is shown.
+- Update `age` when the scene meaningfully advances time. This can be one year, several years, decades, or no time at all for an immediate crisis follow-up.
 - Update `attrs` when a durable ability, resource, health, morale, or luck state changes.
 - Update `flags` when a fact should affect future rulings.
 - Update `event_history` whenever an authored or manual event materially resolves.
 - Update `special_candidates` when prerequisite branches unlock or resolve.
 - Update `terminal` when an arc closes.
+- If the player asks for current state, show a compact readable state summary. Show raw JSON only if they explicitly ask for raw state.
 
 The model may remember richer story context through conversation. The state only tracks facts that need rule-level continuity.
